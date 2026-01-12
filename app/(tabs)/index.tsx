@@ -1,13 +1,35 @@
 import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { Link, router } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { Alert, Button, Platform, StyleSheet } from 'react-native';
 
 import { HelloWave } from '@/components/hello-wave';
 import ParallaxScrollView from '@/components/parallax-scroll-view';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import { auth } from '@/lib/firebase';
 
 export default function HomeScreen() {
+  const [email, setEmail] = useState<string | null>(auth.currentUser?.email ?? null);
+
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      setEmail(user?.email ?? null);
+    });
+
+    return unsubscribe;
+  }, []);
+
+  const signOut = async () => {
+    try {
+      await auth.signOut();
+      router.replace('/(auth)/sign-in');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Sign out failed.';
+      Alert.alert('Error', message);
+    }
+  };
+
   return (
     <ParallaxScrollView
       headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
@@ -17,6 +39,11 @@ export default function HomeScreen() {
           style={styles.reactLogo}
         />
       }>
+      <ThemedView style={styles.stepContainer}>
+        <ThemedText type="subtitle">Account</ThemedText>
+        <ThemedText>{email ? `Signed in as ${email}` : 'Not signed in'}</ThemedText>
+        <Button title="Sign Out" onPress={signOut} />
+      </ThemedView>
       <ThemedView style={styles.titleContainer}>
         <ThemedText type="title">Welcome!</ThemedText>
         <HelloWave />
