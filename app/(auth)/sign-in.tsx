@@ -1,33 +1,22 @@
-import Constants from 'expo-constants';
-import firebase from 'firebase/compat/app';
-import 'firebase/compat/auth';
-import 'firebase/compat/database';
-import 'firebase/database';
+import { Redirect } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Button, StyleSheet, Text, TextInput, View } from 'react-native';
 
+import { firebase } from '@/lib/firebase';
 
-const firebaseConfig = Constants.expoConfig?.extra?.firebase;
-
-if (!firebaseConfig) {
-  throw new Error('Missing Firebase config. Check app.config.js and your .env values.');
-}
-
-if (!firebase.apps.length) {
-  firebase.initializeApp(firebaseConfig);
-} else {
-  firebase.app();
-}
-
-const App = () => {
+export default function SignInScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState<firebase.User | null>(null);
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(false);
+  const [authReady, setAuthReady] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = firebase.auth().onAuthStateChanged(setUser);
+    const unsubscribe = firebase.auth().onAuthStateChanged((nextUser) => {
+      setUser(nextUser);
+      setAuthReady(true);
+    });
     return unsubscribe;
   }, []);
 
@@ -57,35 +46,17 @@ const App = () => {
     setLoading(false);
   };
 
-  const signOut = async () => {
-    setLoading(true);
-    try {
-      await firebase.auth().signOut();
-      setUser(null);
-      setStatus('Signed out');
-    } catch (error) {
-      setStatus('Error signing out');
-    }
-    setLoading(false);
-  };
+  if (!authReady) {
+    return (
+      <View style={styles.screen}>
+        <ActivityIndicator />
+      </View>
+    );
+  }
 
-  const writeData = () => {
-    firebase.database().ref('/users/1').set({
-      name: 'John Doe',
-      email: email,
-    }).then(() => {
-      alert('Data saved!');
-    }).catch(error => alert(error.message));
-  };
-
-  const readData = () => {
-    firebase.database().ref('/users/1').once('value')
-      .then(snapshot => {
-        const data = snapshot.val();
-        alert('User data: ' + JSON.stringify(data));
-      })
-      .catch(error => alert(error.message));
-  };
+  if (user) {
+    return <Redirect href="/(tabs)" />;
+  }
 
   return (
     <View style={styles.screen}>
@@ -106,15 +77,11 @@ const App = () => {
       />
       <Button title="Sign Up" onPress={signUp} disabled={loading} />
       <Button title="Sign In" onPress={signIn} disabled={loading} />
-      <Button title="Sign Out" onPress={signOut} disabled={loading || !user} />
       {loading && <ActivityIndicator style={{ marginTop: 8 }} />}
       {status ? <Text style={styles.status}>{status}</Text> : null}
-      {user && <Text style={styles.welcome}>Welcome, {user.email}</Text>}
     </View>
   );
-};
-
-export default App;
+}
 
 const styles = StyleSheet.create({
   screen: {
@@ -141,10 +108,5 @@ const styles = StyleSheet.create({
     marginTop: 6,
     textAlign: 'center',
     color: '#444',
-  },
-  welcome: {
-    marginTop: 10,
-    textAlign: 'center',
-    fontWeight: '600',
   },
 });
