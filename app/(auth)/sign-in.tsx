@@ -1,6 +1,14 @@
 import { Redirect } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Button, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 
 import { firebase } from '@/lib/firebase';
 
@@ -60,53 +68,212 @@ export default function SignInScreen() {
 
   return (
     <View style={styles.screen}>
-      <Text style={styles.title}>Firebase Auth Demo</Text>
-      <TextInput
-        placeholder="Email"
-        value={email}
-        onChangeText={setEmail}
-        autoCapitalize="none"
-        style={styles.input}
-      />
-      <TextInput
-        placeholder="Password"
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
-        style={styles.input}
-      />
-      <Button title="Sign Up" onPress={signUp} disabled={loading} />
-      <Button title="Sign In" onPress={signIn} disabled={loading} />
-      {loading && <ActivityIndicator style={{ marginTop: 8 }} />}
-      {status ? <Text style={styles.status}>{status}</Text> : null}
+      <View pointerEvents="none" style={[styles.blob, styles.blobTop]} />
+      <View pointerEvents="none" style={[styles.blob, styles.blobMiddle]} />
+      <View pointerEvents="none" style={[styles.blob, styles.blobBottom]} />
+      <View style={styles.card}>
+        <Text style={styles.brand}>babble</Text>
+        <Text style={styles.subtitle}>gentle updates for early care</Text>
+        <Text style={styles.title}>Sign in to keep families close</Text>
+        <View style={styles.form}>
+          <View style={styles.field}>
+            <Text style={styles.label}>Email</Text>
+            <TextInput
+              placeholder="hello@family.com"
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="email-address"
+              placeholderTextColor={colors.placeholder}
+              style={styles.input}
+            />
+          </View>
+          <View style={styles.field}>
+            <Text style={styles.label}>Password</Text>
+            <TextInput
+              placeholder="Your secure password"
+              secureTextEntry
+              value={password}
+              onChangeText={setPassword}
+              autoCapitalize="none"
+              placeholderTextColor={colors.placeholder}
+              style={styles.input}
+            />
+          </View>
+          <Pressable
+            onPress={signIn}
+            disabled={loading}
+            style={({ pressed }) => [
+              styles.button,
+              styles.primaryButton,
+              pressed && styles.buttonPressed,
+              loading && styles.buttonDisabled,
+            ]}
+          >
+            <Text style={styles.primaryButtonText}>Sign In</Text>
+          </Pressable>
+          <Pressable
+            onPress={signUp}
+            disabled={loading}
+            style={({ pressed }) => [
+              styles.button,
+              styles.secondaryButton,
+              pressed && styles.buttonPressed,
+              loading && styles.buttonDisabled,
+            ]}
+          >
+            <Text style={styles.secondaryButtonText}>Create Account</Text>
+          </Pressable>
+          {loading && <ActivityIndicator style={styles.loader} color={colors.primaryText} />}
+          {status ? <Text style={styles.status}>{status}</Text> : null}
+        </View>
+      </View>
     </View>
   );
 }
 
+const colors = {
+  background: '#fdf6f0',
+  card: '#ffffff',
+  primary: '#f4b6a6',
+  primaryText: '#4a2c23',
+  secondary: '#b9e0e2',
+  secondaryText: '#24474a',
+  inputBackground: '#fffaf6',
+  inputBorder: '#f0d7cd',
+  label: '#6f4f45',
+  text: '#2f2623',
+  muted: '#7f6c66',
+  placeholder: '#b8a6a1',
+  status: '#8b4a3d',
+  shadow: '#dcc9bf',
+};
+
 const styles = StyleSheet.create({
   screen: {
-    padding: 20,
-    gap: 10,
+    padding: 24,
     flex: 1,
     justifyContent: 'center',
-    backgroundColor: '#f7f9fc',
+    alignItems: 'center',
+    backgroundColor: colors.background,
+  },
+  card: {
+    width: '100%',
+    maxWidth: 420,
+    padding: 24,
+    borderRadius: 28,
+    backgroundColor: colors.card,
+    gap: 16,
+    shadowColor: colors.shadow,
+    shadowOpacity: 0.35,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 6,
+  },
+  brand: {
+    fontSize: 40,
+    textAlign: 'center',
+    color: colors.primaryText,
+    letterSpacing: 1.4,
+    fontFamily: Platform.select({
+      ios: 'Cochin',
+      android: 'serif',
+      default: 'serif',
+    }),
+  },
+  subtitle: {
+    textAlign: 'center',
+    color: colors.muted,
+    fontSize: 14,
+    marginTop: -10,
   },
   title: {
-    fontSize: 22,
+    fontSize: 18,
     fontWeight: '600',
-    marginBottom: 4,
     textAlign: 'center',
+    color: colors.text,
+  },
+  form: {
+    gap: 12,
+  },
+  field: {
+    gap: 6,
+  },
+  label: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.label,
+    letterSpacing: 0.4,
   },
   input: {
-    borderBottomWidth: 1,
-    paddingVertical: 8,
-    backgroundColor: 'white',
-    borderRadius: 6,
-    paddingHorizontal: 10,
+    borderWidth: 1,
+    borderColor: colors.inputBorder,
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    backgroundColor: colors.inputBackground,
+    color: colors.text,
+  },
+  button: {
+    borderRadius: 18,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  primaryButton: {
+    backgroundColor: colors.primary,
+  },
+  primaryButtonText: {
+    color: colors.primaryText,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  secondaryButton: {
+    backgroundColor: colors.secondary,
+  },
+  secondaryButtonText: {
+    color: colors.secondaryText,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  buttonPressed: {
+    transform: [{ scale: 0.98 }],
+  },
+  buttonDisabled: {
+    opacity: 0.65,
+  },
+  loader: {
+    marginTop: 4,
   },
   status: {
-    marginTop: 6,
     textAlign: 'center',
-    color: '#444',
+    color: colors.status,
+    fontSize: 13,
+  },
+  blob: {
+    position: 'absolute',
+    borderRadius: 999,
+  },
+  blobTop: {
+    width: 220,
+    height: 220,
+    backgroundColor: '#fde2d5',
+    top: -80,
+    left: -60,
+  },
+  blobMiddle: {
+    width: 140,
+    height: 140,
+    backgroundColor: '#f7e7c9',
+    top: 120,
+    right: -50,
+  },
+  blobBottom: {
+    width: 260,
+    height: 260,
+    backgroundColor: '#d9f0f1',
+    bottom: -120,
+    right: -90,
   },
 });
