@@ -2,6 +2,7 @@ import { Redirect } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
+import { babbleColors } from '@/constants/babble-theme';
 import { firebase } from '@/lib/firebase';
 
 export default function Index() {
@@ -24,7 +25,7 @@ export default function Index() {
     );
   }
 
-  return <Redirect href={user ? '/(tabs)' : '/(auth)/sign-in'} />;
+  return <Redirect href={user ? '/(onboarding)' : '/(auth)/sign-in'} />;
 }
 
 const styles = StyleSheet.create({
@@ -32,6 +33,6 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#f7f9fc',
+    backgroundColor: babbleColors.background,
   },
 });

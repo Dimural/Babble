@@ -1,15 +1,13 @@
 import { Redirect } from 'expo-router';
 import { useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
+import {
+  babbleColors,
+  babbleRadii,
+  babbleShadow,
+  babbleTypography,
+} from '@/constants/babble-theme';
 import { firebase } from '@/lib/firebase';
 
 export default function SignInScreen() {
@@ -63,7 +61,7 @@ export default function SignInScreen() {
   }
 
   if (user) {
-    return <Redirect href="/(tabs)" />;
+    return <Redirect href="/(onboarding)" />;
   }
 
   return (
@@ -74,7 +72,6 @@ export default function SignInScreen() {
       <View style={styles.card}>
         <Text style={styles.brand}>babble</Text>
         <Text style={styles.subtitle}>gentle updates for early care</Text>
-        <Text style={styles.title}>Sign in to keep families close</Text>
         <View style={styles.form}>
           <View style={styles.field}>
             <Text style={styles.label}>Email</Text>
@@ -85,7 +82,7 @@ export default function SignInScreen() {
               autoCapitalize="none"
               autoCorrect={false}
               keyboardType="email-address"
-              placeholderTextColor={colors.placeholder}
+              placeholderTextColor={babbleColors.placeholder}
               style={styles.input}
             />
           </View>
@@ -97,7 +94,7 @@ export default function SignInScreen() {
               value={password}
               onChangeText={setPassword}
               autoCapitalize="none"
-              placeholderTextColor={colors.placeholder}
+              placeholderTextColor={babbleColors.placeholder}
               style={styles.input}
             />
           </View>
@@ -125,7 +122,9 @@ export default function SignInScreen() {
           >
             <Text style={styles.secondaryButtonText}>Create Account</Text>
           </Pressable>
-          {loading && <ActivityIndicator style={styles.loader} color={colors.primaryText} />}
+          {loading && (
+            <ActivityIndicator style={styles.loader} color={babbleColors.primaryText} />
+          )}
           {status ? <Text style={styles.status}>{status}</Text> : null}
         </View>
       </View>
@@ -133,66 +132,37 @@ export default function SignInScreen() {
   );
 }
 
-const colors = {
-  background: '#fdf6f0',
-  card: '#ffffff',
-  primary: '#f4b6a6',
-  primaryText: '#4a2c23',
-  secondary: '#b9e0e2',
-  secondaryText: '#24474a',
-  inputBackground: '#fffaf6',
-  inputBorder: '#f0d7cd',
-  label: '#6f4f45',
-  text: '#2f2623',
-  muted: '#7f6c66',
-  placeholder: '#b8a6a1',
-  status: '#8b4a3d',
-  shadow: '#dcc9bf',
-};
-
 const styles = StyleSheet.create({
   screen: {
     padding: 24,
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: colors.background,
+    backgroundColor: babbleColors.background,
   },
   card: {
     width: '100%',
     maxWidth: 420,
     padding: 24,
-    borderRadius: 28,
-    backgroundColor: colors.card,
+    borderRadius: babbleRadii.card,
+    backgroundColor: babbleColors.card,
     gap: 16,
-    shadowColor: colors.shadow,
-    shadowOpacity: 0.35,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 6,
+    borderWidth: 1,
+    borderColor: babbleColors.outline,
+    ...babbleShadow,
   },
   brand: {
     fontSize: 40,
     textAlign: 'center',
-    color: colors.primaryText,
+    color: babbleColors.primaryText,
     letterSpacing: 1.4,
-    fontFamily: Platform.select({
-      ios: 'Cochin',
-      android: 'serif',
-      default: 'serif',
-    }),
+    fontFamily: babbleTypography.brand,
   },
   subtitle: {
     textAlign: 'center',
-    color: colors.muted,
+    color: babbleColors.muted,
     fontSize: 14,
     marginTop: -10,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: '600',
-    textAlign: 'center',
-    color: colors.text,
   },
   form: {
     gap: 12,
@@ -203,37 +173,37 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 12,
     fontWeight: '600',
-    color: colors.label,
+    color: babbleColors.primaryText,
     letterSpacing: 0.4,
   },
   input: {
     borderWidth: 1,
-    borderColor: colors.inputBorder,
-    borderRadius: 16,
+    borderColor: babbleColors.inputBorder,
+    borderRadius: babbleRadii.input,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    backgroundColor: colors.inputBackground,
-    color: colors.text,
+    backgroundColor: babbleColors.inputBackground,
+    color: babbleColors.text,
   },
   button: {
-    borderRadius: 18,
+    borderRadius: babbleRadii.pill,
     paddingVertical: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
   primaryButton: {
-    backgroundColor: colors.primary,
+    backgroundColor: babbleColors.primary,
   },
   primaryButtonText: {
-    color: colors.primaryText,
+    color: babbleColors.primaryText,
     fontSize: 16,
     fontWeight: '600',
   },
   secondaryButton: {
-    backgroundColor: colors.secondary,
+    backgroundColor: babbleColors.secondary,
   },
   secondaryButtonText: {
-    color: colors.secondaryText,
+    color: babbleColors.secondaryText,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -248,7 +218,7 @@ const styles = StyleSheet.create({
   },
   status: {
     textAlign: 'center',
-    color: colors.status,
+    color: babbleColors.status,
     fontSize: 13,
   },
   blob: {

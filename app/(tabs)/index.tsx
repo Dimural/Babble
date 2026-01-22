@@ -1,10 +1,30 @@
-import { Redirect } from 'expo-router';
+import { Redirect, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 
+import { babbleColors, babbleRadii, babbleShadow, babbleTypography } from '@/constants/babble-theme';
+import { lessonModules } from '@/data/lessons';
 import { firebase } from '@/lib/firebase';
 
+type LessonPreview = {
+  id: string;
+  title: string;
+  duration: string;
+  moduleTitle: string;
+  completed: boolean;
+  locked?: boolean;
+  moduleLocked: boolean;
+};
+
 export default function HomeScreen() {
+  const router = useRouter();
   const [email, setEmail] = useState<string | null>(null);
   const [authReady, setAuthReady] = useState(false);
 
@@ -16,13 +36,9 @@ export default function HomeScreen() {
     return unsubscribe;
   }, []);
 
-  const signOut = async () => {
-    await firebase.auth().signOut();
-  };
-
   if (!authReady) {
     return (
-      <View style={styles.screen}>
+      <View style={styles.loading}>
         <ActivityIndicator />
       </View>
     );
@@ -32,72 +48,100 @@ export default function HomeScreen() {
     return <Redirect href="/(auth)/sign-in" />;
   }
 
+  const lessons: LessonPreview[] = lessonModules.flatMap((module) =>
+    module.lessons.map((lesson) => ({
+      ...lesson,
+      moduleTitle: module.title,
+      moduleLocked: module.locked ?? false,
+    })),
+  );
+
+  const completedCount = lessons.filter((lesson) => lesson.completed).length;
+  const totalCount = lessons.length;
+  const completionRate = totalCount ? Math.round((completedCount / totalCount) * 100) : 0;
+  const modulesCompleted = lessonModules.filter((module) =>
+    module.lessons.every((lesson) => lesson.completed),
+  ).length;
+
+  const nextLesson =
+    lessons.find((lesson) => !lesson.completed && !lesson.locked && !lesson.moduleLocked) ??
+    lessons[0];
+
   return (
     <View style={styles.screen}>
       <View pointerEvents="none" style={[styles.blob, styles.blobTop]} />
       <View pointerEvents="none" style={[styles.blob, styles.blobBottom]} />
-      <View style={styles.header}>
-        <Text style={styles.brand}>babble</Text>
-        <Pressable onPress={signOut} style={styles.signOut}>
-          <Text style={styles.signOutText}>Sign Out</Text>
-        </Pressable>
-      </View>
-      <Text style={styles.subtitle}>Welcome back, {email ?? ''}</Text>
-      <Text style={styles.title}>Today’s gentle journey</Text>
-      <View style={styles.cardRow}>
-        <View style={[styles.card, styles.primaryCard]}>
-          <Text style={styles.cardTitle}>First steps in care</Text>
-          <Text style={styles.cardBody}>
-            Learn soothing routines, safe sleep, and tiny wins that build confidence.
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.header}>
+          <Text style={styles.brand}>babble</Text>
+          <View style={styles.streakBadge}>
+            <Text style={styles.streakLabel}>Streak</Text>
+            <Text style={styles.streakValue}>3</Text>
+          </View>
+        </View>
+        <Text style={styles.subtitle}>Welcome back, {email ?? ''}</Text>
+        <Text style={styles.title}>Daily lesson</Text>
+        <View style={[styles.card, styles.dailyCard]}>
+          <Text style={styles.cardEyebrow}>Up next</Text>
+          <Text style={styles.cardTitle}>{nextLesson?.title ?? 'Start your journey'}</Text>
+          <Text style={styles.cardMeta}>
+            {nextLesson?.duration ?? '3 min'} - {nextLesson?.moduleTitle ?? 'Getting Started'}
           </Text>
-          <Pressable onPress={() => {}} style={styles.cta}>
-            <Text style={styles.ctaText}>start journey</Text>
+          <Pressable
+            onPress={() => router.push(`/lesson/${nextLesson?.id ?? 'lesson-1'}`)}
+            style={styles.primaryButton}
+          >
+            <Text style={styles.primaryButtonText}>Continue Lesson</Text>
           </Pressable>
         </View>
-        <View style={[styles.card, styles.secondaryCard]}>
-          <Text style={styles.cardTitle}>Baby basics lab</Text>
-          <Text style={styles.cardBody}>
-            Practice the essentials with playful prompts and quick check-ins.
-          </Text>
-          <Pressable onPress={() => {}} style={styles.ctaAlt}>
-            <Text style={styles.ctaAltText}>start journey</Text>
-          </Pressable>
+        <View style={styles.progressSection}>
+          <Text style={styles.sectionTitle}>Your progress</Text>
+          <View style={styles.progressRow}>
+            <View style={[styles.progressCard, styles.progressCardWarm]}>
+              <Text style={styles.progressValue}>{completionRate}%</Text>
+              <Text style={styles.progressLabel}>Complete</Text>
+            </View>
+            <View style={[styles.progressCard, styles.progressCardCool]}>
+              <Text style={styles.progressValue}>{completedCount}</Text>
+              <Text style={styles.progressLabel}>Lessons</Text>
+            </View>
+            <View style={[styles.progressCard, styles.progressCardNeutral]}>
+              <Text style={styles.progressValue}>{modulesCompleted}</Text>
+              <Text style={styles.progressLabel}>Modules</Text>
+            </View>
+          </View>
+          <View style={styles.progressBar}>
+            <View style={[styles.progressFill, { width: `${completionRate}%` }]} />
+          </View>
         </View>
-      </View>
-      <View style={styles.milestone}>
-        <Text style={styles.milestoneTitle}>Your calm streak</Text>
-        <Text style={styles.milestoneValue}>3 days</Text>
-        <Text style={styles.milestoneHint}>Keep the momentum with one mini lesson.</Text>
-      </View>
-      <View style={styles.tipCard}>
-        <Text style={styles.tipTitle}>Today’s caregiver tip</Text>
-        <Text style={styles.tipBody}>
-          Swaddling helps babies feel secure — keep it snug but leave room for hip movement.
-        </Text>
-      </View>
+        <View style={styles.tipCard}>
+          <Text style={styles.tipTitle}>Today's gentle tip</Text>
+          <Text style={styles.tipBody}>
+            Keep baby close during diaper changes and narrate each step. It builds calm and trust.
+          </Text>
+        </View>
+      </ScrollView>
     </View>
   );
 }
 
-const colors = {
-  background: '#fdf6f0',
-  text: '#2f2623',
-  muted: '#7f6c66',
-  primary: '#f4b6a6',
-  primaryText: '#4a2c23',
-  secondary: '#b9e0e2',
-  secondaryText: '#24474a',
-  card: '#ffffff',
-  outline: '#f0d7cd',
-  chip: '#f7e7c9',
-  shadow: '#dcc9bf',
-};
-
 const styles = StyleSheet.create({
+  loading: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: babbleColors.background,
+  },
   screen: {
     flex: 1,
+    backgroundColor: babbleColors.background,
+  },
+  content: {
     padding: 24,
-    backgroundColor: colors.background,
+    paddingBottom: 40,
   },
   header: {
     flexDirection: 'row',
@@ -106,138 +150,151 @@ const styles = StyleSheet.create({
   },
   brand: {
     fontSize: 34,
-    color: colors.primaryText,
+    color: babbleColors.primaryText,
     letterSpacing: 1.2,
-    fontFamily: Platform.select({
-      ios: 'Cochin',
-      android: 'serif',
-      default: 'serif',
-    }),
+    fontFamily: babbleTypography.brand,
   },
-  signOut: {
+  streakBadge: {
     paddingHorizontal: 14,
     paddingVertical: 8,
-    borderRadius: 16,
-    backgroundColor: colors.chip,
+    borderRadius: babbleRadii.pill,
+    backgroundColor: babbleColors.chip,
+    alignItems: 'center',
   },
-  signOutText: {
-    color: colors.primaryText,
-    fontWeight: '600',
+  streakLabel: {
+    fontSize: 10,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    color: babbleColors.muted,
+  },
+  streakValue: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: babbleColors.primaryText,
   },
   subtitle: {
-    marginTop: 10,
-    color: colors.muted,
+    marginTop: 12,
+    color: babbleColors.muted,
     fontSize: 14,
+    fontFamily: babbleTypography.body,
   },
   title: {
-    marginTop: 6,
-    fontSize: 22,
+    marginTop: 8,
+    fontSize: 20,
     fontWeight: '600',
-    color: colors.text,
-  },
-  cardRow: {
-    marginTop: 18,
-    gap: 14,
+    color: babbleColors.text,
+    fontFamily: babbleTypography.heading,
   },
   card: {
-    borderRadius: 24,
+    borderRadius: babbleRadii.card,
     padding: 18,
-    backgroundColor: colors.card,
-    shadowColor: colors.shadow,
-    shadowOpacity: 0.25,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 5,
+    backgroundColor: babbleColors.card,
     borderWidth: 1,
-    borderColor: colors.outline,
+    borderColor: babbleColors.outline,
+    ...babbleShadow,
   },
-  primaryCard: {
+  dailyCard: {
+    marginTop: 16,
     backgroundColor: '#fff7f2',
   },
-  secondaryCard: {
-    backgroundColor: '#f2fbfb',
+  cardEyebrow: {
+    fontSize: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    color: babbleColors.muted,
   },
   cardTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  cardBody: {
     marginTop: 8,
-    fontSize: 14,
-    lineHeight: 20,
-    color: colors.muted,
-  },
-  cta: {
-    marginTop: 16,
-    paddingVertical: 10,
-    borderRadius: 16,
-    alignItems: 'center',
-    backgroundColor: colors.primary,
-  },
-  ctaText: {
-    color: colors.primaryText,
+    fontSize: 18,
     fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    fontSize: 12,
+    color: babbleColors.text,
   },
-  ctaAlt: {
-    marginTop: 16,
-    paddingVertical: 10,
-    borderRadius: 16,
-    alignItems: 'center',
-    backgroundColor: colors.secondary,
-  },
-  ctaAltText: {
-    color: colors.secondaryText,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    fontSize: 12,
-  },
-  milestone: {
-    marginTop: 18,
-    padding: 18,
-    borderRadius: 20,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.outline,
-  },
-  milestoneTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  milestoneValue: {
+  cardMeta: {
     marginTop: 6,
-    fontSize: 26,
-    fontWeight: '700',
-    color: colors.primaryText,
-  },
-  milestoneHint: {
-    marginTop: 4,
-    color: colors.muted,
     fontSize: 13,
+    color: babbleColors.muted,
+  },
+  primaryButton: {
+    marginTop: 16,
+    paddingVertical: 12,
+    borderRadius: babbleRadii.pill,
+    backgroundColor: babbleColors.primary,
+    alignItems: 'center',
+  },
+  primaryButtonText: {
+    color: babbleColors.primaryText,
+    fontWeight: '600',
+    letterSpacing: 0.6,
+  },
+  progressSection: {
+    marginTop: 22,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: babbleColors.text,
+    marginBottom: 12,
+  },
+  progressRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  progressCard: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: babbleRadii.card,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: babbleColors.outline,
+  },
+  progressCardWarm: {
+    backgroundColor: '#fff1e9',
+  },
+  progressCardCool: {
+    backgroundColor: '#eff8f8',
+  },
+  progressCardNeutral: {
+    backgroundColor: '#fffaf6',
+  },
+  progressValue: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: babbleColors.text,
+  },
+  progressLabel: {
+    marginTop: 4,
+    fontSize: 12,
+    color: babbleColors.muted,
+  },
+  progressBar: {
+    marginTop: 12,
+    height: 10,
+    borderRadius: 10,
+    backgroundColor: '#f1e2dc',
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: babbleColors.secondary,
   },
   tipCard: {
-    marginTop: 16,
+    marginTop: 20,
     padding: 18,
-    borderRadius: 20,
+    borderRadius: babbleRadii.card,
     backgroundColor: '#fffaf6',
     borderWidth: 1,
-    borderColor: colors.outline,
+    borderColor: babbleColors.outline,
   },
   tipTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.text,
+    color: babbleColors.text,
   },
   tipBody: {
     marginTop: 8,
     fontSize: 14,
     lineHeight: 20,
-    color: colors.muted,
+    color: babbleColors.muted,
   },
   blob: {
     position: 'absolute',
