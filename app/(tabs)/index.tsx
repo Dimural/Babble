@@ -118,7 +118,7 @@ export default function HomeScreen() {
           </View>
         </View>
         <View style={styles.tipCard}>
-          <Text style={styles.tipTitle}>Today's gentle tip</Text>
+          <Text style={styles.tipTitle}>{"Today's gentle tip"}</Text>
           <Text style={styles.tipBody}>
             Keep baby close during diaper changes and narrate each step. It builds calm and trust.
           </Text>

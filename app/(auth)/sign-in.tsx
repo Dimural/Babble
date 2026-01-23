@@ -33,7 +33,7 @@ export default function SignInScreen() {
     try {
       await firebase.auth().createUserWithEmailAndPassword(email, password);
       setStatus('User created!');
-    } catch (error) {
+    } catch {
       setStatus('Error creating user, try a different email or password');
     }
     setLoading(false);
@@ -46,7 +46,7 @@ export default function SignInScreen() {
     try {
       await firebase.auth().signInWithEmailAndPassword(email, password);
       setStatus('Signed in!');
-    } catch (error) {
+    } catch {
       setStatus('Invalid email or password');
     }
     setLoading(false);
