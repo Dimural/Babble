@@ -1,4 +1,4 @@
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import {
   babbleColors,
@@ -7,14 +7,27 @@ import {
   babbleTypography,
 } from '@/constants/babble-theme';
 import { lessonModules } from '@/data/lessons';
+import { useProgress } from '@/hooks/use-progress';
 
 export default function ProgressScreen() {
+  const { progress, loading } = useProgress();
+
+  if (loading || !progress) {
+    return (
+      <View style={styles.loading}>
+        <ActivityIndicator />
+      </View>
+    );
+  }
+
   const lessons = lessonModules.flatMap((module) => module.lessons);
-  const completedLessons = lessons.filter((lesson) => lesson.completed).length;
+  const completedLessons = lessons.filter((lesson) =>
+    progress.completedLessonIds.includes(lesson.id),
+  ).length;
   const totalLessons = lessons.length;
   const completionRate = totalLessons ? Math.round((completedLessons / totalLessons) * 100) : 0;
   const modulesCompleted = lessonModules.filter((module) =>
-    module.lessons.every((lesson) => lesson.completed),
+    module.lessons.every((lesson) => progress.completedLessonIds.includes(lesson.id)),
   ).length;
 
   const streakDays = 3;
@@ -53,7 +66,9 @@ export default function ProgressScreen() {
           <Text style={styles.sectionTitle}>Modules</Text>
           {lessonModules.map((module) => {
             const moduleTotal = module.lessons.length;
-            const moduleDone = module.lessons.filter((lesson) => lesson.completed).length;
+            const moduleDone = module.lessons.filter((lesson) =>
+              progress.completedLessonIds.includes(lesson.id),
+            ).length;
             const moduleRate = moduleTotal ? Math.round((moduleDone / moduleTotal) * 100) : 0;
             return (
               <View key={module.id} style={styles.moduleCard}>
@@ -77,6 +92,12 @@ export default function ProgressScreen() {
 }
 
 const styles = StyleSheet.create({
+  loading: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: babbleColors.background,
+  },
   screen: {
     flex: 1,
     backgroundColor: babbleColors.background,

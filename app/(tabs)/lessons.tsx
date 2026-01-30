@@ -1,4 +1,5 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
 
 import {
   babbleColors,
@@ -7,10 +8,20 @@ import {
   babbleTypography,
 } from '@/constants/babble-theme';
 import { lessonModules } from '@/data/lessons';
-
-const noop = () => {};
+import { useProgress } from '@/hooks/use-progress';
 
 export default function LessonsScreen() {
+  const router = useRouter();
+  const { progress, loading } = useProgress();
+
+  if (loading || !progress) {
+    return (
+      <View style={styles.loading}>
+        <ActivityIndicator />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.screen}>
       <View pointerEvents="none" style={[styles.blob, styles.blobTop]} />
@@ -22,6 +33,7 @@ export default function LessonsScreen() {
         </Text>
         {lessonModules.map((module) => {
           const isLocked = module.locked ?? false;
+          const firstLesson = module.lessons.find((lesson) => !lesson.locked) ?? module.lessons[0];
           return (
             <View
               key={module.id}
@@ -37,19 +49,28 @@ export default function LessonsScreen() {
               <View style={styles.lessonList}>
                 <View style={styles.pathLine} />
                 {module.lessons.map((lesson, index) => {
+                  const completed = progress.completedLessonIds.includes(lesson.id);
                   const lessonLocked = isLocked || lesson.locked === true;
                   return (
-                    <View key={lesson.id} style={styles.lessonRow}>
+                    <Pressable
+                      key={lesson.id}
+                      disabled={lessonLocked}
+                      onPress={() => router.push(`/lesson/${lesson.id}`)}
+                      style={[
+                        styles.lessonRow,
+                        lessonLocked && styles.lessonRowLocked,
+                      ]}
+                    >
                       <View
                         style={[
                           styles.lessonNode,
-                          lesson.completed && styles.lessonNodeDone,
+                          completed && styles.lessonNodeDone,
                           lessonLocked && styles.lessonNodeLocked,
-                          !lesson.completed && !lessonLocked && styles.lessonNodeActive,
+                          !completed && !lessonLocked && styles.lessonNodeActive,
                         ]}
                       >
                         <Text style={styles.lessonNodeText}>
-                          {lesson.completed ? 'Done' : lessonLocked ? 'Lock' : index + 1}
+                          {completed ? 'Done' : lessonLocked ? 'Lock' : index + 1}
                         </Text>
                       </View>
                       <View style={styles.lessonInfo}>
@@ -66,23 +87,24 @@ export default function LessonsScreen() {
                       <Text
                         style={[
                           styles.lessonTag,
-                          lesson.completed && styles.lessonTagDone,
+                          completed && styles.lessonTagDone,
                           lessonLocked && styles.lessonTagLocked,
-                          !lesson.completed && !lessonLocked && styles.lessonTagNext,
+                          !completed && !lessonLocked && styles.lessonTagNext,
                         ]}
                       >
-                        {lesson.completed ? 'Done' : lessonLocked ? 'Locked' : 'Up next'}
+                        {completed ? 'Done' : lessonLocked ? 'Locked' : 'Up next'}
                       </Text>
-                    </View>
+                    </Pressable>
                   );
                 })}
               </View>
               <Pressable
-                onPress={noop}
+                onPress={() => router.push(`/lesson/${firstLesson?.id ?? 'lesson-1'}`)}
                 style={[
                   styles.moduleButton,
                   isLocked && styles.moduleButtonDisabled,
                 ]}
+                disabled={isLocked}
               >
                 <Text
                   style={[
@@ -102,6 +124,12 @@ export default function LessonsScreen() {
 }
 
 const styles = StyleSheet.create({
+  loading: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: babbleColors.background,
+  },
   screen: {
     flex: 1,
     backgroundColor: babbleColors.background,
@@ -184,6 +212,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+  },
+  lessonRowLocked: {
+    opacity: 0.7,
   },
   lessonNode: {
     width: 36,

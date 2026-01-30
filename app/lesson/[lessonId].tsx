@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import {
@@ -9,6 +9,7 @@ import {
   babbleTypography,
 } from '@/constants/babble-theme';
 import { lessonModules, LessonStep } from '@/data/lessons';
+import { useProgress } from '@/hooks/use-progress';
 
 type LessonPreview = {
   id: string;
@@ -21,6 +22,7 @@ export default function LessonScreen() {
   const params = useLocalSearchParams<{ lessonId?: string | string[] }>();
   const lessonId = Array.isArray(params.lessonId) ? params.lessonId[0] : params.lessonId;
   const [stepIndex, setStepIndex] = useState(0);
+  const { loading, completeLesson } = useProgress();
 
   const lesson = useMemo<LessonPreview>(() => {
     const allLessons = lessonModules.flatMap((module) => module.lessons);
@@ -45,13 +47,26 @@ export default function LessonScreen() {
   const isComplete = stepIndex >= totalSteps;
   const step = lesson.steps[stepIndex];
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (isComplete) {
       router.replace('/(tabs)');
       return;
     }
+    if (stepIndex >= totalSteps - 1) {
+      await completeLesson(lesson.id);
+      setStepIndex(totalSteps);
+      return;
+    }
     setStepIndex((prev) => prev + 1);
   };
+
+  if (loading) {
+    return (
+      <View style={styles.loading}>
+        <ActivityIndicator />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.screen}>
@@ -114,6 +129,12 @@ export default function LessonScreen() {
 }
 
 const styles = StyleSheet.create({
+  loading: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: babbleColors.background,
+  },
   screen: {
     flex: 1,
     backgroundColor: babbleColors.background,

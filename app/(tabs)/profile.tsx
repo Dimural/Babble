@@ -16,6 +16,7 @@ import {
   babbleShadow,
   babbleTypography,
 } from '@/constants/babble-theme';
+import { useProgress } from '@/hooks/use-progress';
 import { firebase } from '@/lib/firebase';
 
 const noop = () => {};
@@ -25,6 +26,7 @@ export default function ProfileScreen() {
   const [authReady, setAuthReady] = useState(false);
   const [notifications, setNotifications] = useState(true);
   const [gentleReminders, setGentleReminders] = useState(true);
+  const { resetProgress } = useProgress();
 
   useEffect(() => {
     const unsubscribe = firebase.auth().onAuthStateChanged((nextUser) => {
@@ -96,7 +98,7 @@ export default function ProfileScreen() {
         </View>
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Progress</Text>
-          <Pressable onPress={noop} style={[styles.actionRow, styles.warningRow]}>
+          <Pressable onPress={resetProgress} style={[styles.actionRow, styles.warningRow]}>
             <Text style={styles.warningText}>Reset progress</Text>
           </Pressable>
         </View>

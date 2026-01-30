@@ -11,6 +11,7 @@ import {
 
 import { babbleColors, babbleRadii, babbleShadow, babbleTypography } from '@/constants/babble-theme';
 import { lessonModules } from '@/data/lessons';
+import { useProgress } from '@/hooks/use-progress';
 import { firebase } from '@/lib/firebase';
 
 type LessonPreview = {
@@ -25,6 +26,7 @@ type LessonPreview = {
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { progress, loading: progressLoading } = useProgress();
   const [email, setEmail] = useState<string | null>(null);
   const [authReady, setAuthReady] = useState(false);
 
@@ -36,7 +38,7 @@ export default function HomeScreen() {
     return unsubscribe;
   }, []);
 
-  if (!authReady) {
+  if (!authReady || progressLoading || !progress) {
     return (
       <View style={styles.loading}>
         <ActivityIndicator />
@@ -51,6 +53,7 @@ export default function HomeScreen() {
   const lessons: LessonPreview[] = lessonModules.flatMap((module) =>
     module.lessons.map((lesson) => ({
       ...lesson,
+      completed: progress.completedLessonIds.includes(lesson.id),
       moduleTitle: module.title,
       moduleLocked: module.locked ?? false,
     })),
@@ -60,7 +63,7 @@ export default function HomeScreen() {
   const totalCount = lessons.length;
   const completionRate = totalCount ? Math.round((completedCount / totalCount) * 100) : 0;
   const modulesCompleted = lessonModules.filter((module) =>
-    module.lessons.every((lesson) => lesson.completed),
+    module.lessons.every((lesson) => progress.completedLessonIds.includes(lesson.id)),
   ).length;
 
   const nextLesson =

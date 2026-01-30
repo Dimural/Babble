@@ -10,7 +10,6 @@ export type Lesson = {
   id: string;
   title: string;
   duration: string;
-  completed: boolean;
   locked?: boolean;
   steps: LessonStep[];
 };
@@ -33,7 +32,6 @@ export const lessonModules: LessonModule[] = [
         id: 'lesson-1',
         title: 'Meet your baby cues',
         duration: '3 min',
-        completed: true,
         steps: [
           {
             id: 'step-1',
@@ -53,7 +51,6 @@ export const lessonModules: LessonModule[] = [
         id: 'lesson-2',
         title: 'Safe sleep setup',
         duration: '4 min',
-        completed: false,
         steps: [
           {
             id: 'step-1',
@@ -72,7 +69,6 @@ export const lessonModules: LessonModule[] = [
         id: 'lesson-3',
         title: 'Swaddling basics',
         duration: '3 min',
-        completed: false,
         steps: [
           {
             id: 'step-1',
@@ -94,7 +90,6 @@ export const lessonModules: LessonModule[] = [
         id: 'lesson-4',
         title: 'The five S routine',
         duration: '5 min',
-        completed: false,
         steps: [
           {
             id: 'step-1',
@@ -108,7 +103,6 @@ export const lessonModules: LessonModule[] = [
         id: 'lesson-5',
         title: 'Bedtime cues',
         duration: '4 min',
-        completed: false,
         locked: true,
         steps: [
           {
@@ -131,7 +125,6 @@ export const lessonModules: LessonModule[] = [
         id: 'lesson-6',
         title: 'Bottle basics',
         duration: '4 min',
-        completed: false,
         locked: true,
         steps: [
           {
