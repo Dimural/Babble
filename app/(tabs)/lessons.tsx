@@ -48,6 +48,11 @@ export default function LessonsScreen() {
               <Text style={styles.moduleDescription}>{module.description}</Text>
               <View style={styles.lessonList}>
                 <View style={styles.pathLine} />
+                <View style={styles.pathCap}>
+                  <View style={styles.pathHandle} />
+                  <View style={styles.pathWheel} />
+                  <View style={styles.pathWheel} />
+                </View>
                 {module.lessons.map((lesson, index) => {
                   const completed = progress.completedLessonIds.includes(lesson.id);
                   const lessonLocked = isLocked || lesson.locked === true;
@@ -199,14 +204,40 @@ const styles = StyleSheet.create({
     position: 'relative',
     paddingLeft: 18,
     gap: 12,
+    paddingTop: 20,
   },
   pathLine: {
     position: 'absolute',
-    left: 8,
-    top: 8,
-    bottom: 8,
-    width: 2,
-    backgroundColor: babbleColors.outline,
+    left: 10,
+    top: 24,
+    bottom: 12,
+    width: 4,
+    borderRadius: 4,
+    backgroundColor: '#f1e2dc',
+    borderWidth: 1,
+    borderColor: babbleColors.outline,
+  },
+  pathCap: {
+    position: 'absolute',
+    left: -2,
+    top: -2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  pathHandle: {
+    width: 30,
+    height: 10,
+    borderRadius: 10,
+    backgroundColor: babbleColors.primary,
+  },
+  pathWheel: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: babbleColors.primaryText,
+    backgroundColor: babbleColors.card,
   },
   lessonRow: {
     flexDirection: 'row',
@@ -225,6 +256,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff5f0',
     borderWidth: 1,
     borderColor: babbleColors.outline,
+    shadowColor: babbleColors.shadow,
+    shadowOpacity: 0.18,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
   },
   lessonNodeActive: {
     backgroundColor: babbleColors.primary,
