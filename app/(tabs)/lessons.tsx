@@ -1,4 +1,4 @@
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 
 import {
@@ -9,6 +9,8 @@ import {
 } from '@/constants/babble-theme';
 import { lessonModules } from '@/data/lessons';
 import { useProgress } from '@/hooks/use-progress';
+
+const footprints = require('../../assets/images/footprints.png');
 
 export default function LessonsScreen() {
   const router = useRouter();
@@ -46,26 +48,26 @@ export default function LessonsScreen() {
                 </Text>
               </View>
               <Text style={styles.moduleDescription}>{module.description}</Text>
-              <View style={styles.pathList}>
+              <View style={styles.mapList}>
                 {module.lessons.map((lesson, index) => {
                   const completed = progress.completedLessonIds.includes(lesson.id);
                   const lessonLocked = isLocked || lesson.locked === true;
                   const isLeft = index % 2 === 0;
                   return (
-                    <View key={lesson.id} style={styles.pathItem}>
+                    <View key={lesson.id} style={styles.mapItem}>
                       <Pressable
                         disabled={lessonLocked}
                         onPress={() => router.push(`/lesson/${lesson.id}`)}
                         style={({ pressed }) => [
-                          styles.stepCard,
-                          isLeft ? styles.stepCardLeft : styles.stepCardRight,
-                          lessonLocked && styles.stepCardLocked,
-                          pressed && !lessonLocked && styles.stepCardPressed,
+                          styles.mapStop,
+                          isLeft ? styles.mapStopLeft : styles.mapStopRight,
+                          lessonLocked && styles.mapStopLocked,
+                          pressed && !lessonLocked && styles.mapStopPressed,
                         ]}
                       >
                         <View
                           style={[
-                            styles.lessonNode,
+                            styles.mapNode,
                             completed && styles.lessonNodeDone,
                             lessonLocked && styles.lessonNodeLocked,
                             !completed && !lessonLocked && styles.lessonNodeActive,
@@ -75,7 +77,7 @@ export default function LessonsScreen() {
                             {completed ? 'Done' : lessonLocked ? 'Lock' : index + 1}
                           </Text>
                         </View>
-                        <View style={styles.lessonInfo}>
+                        <View style={styles.mapLabel}>
                           <Text
                             style={[
                               styles.lessonTitle,
@@ -84,46 +86,31 @@ export default function LessonsScreen() {
                           >
                             {lesson.title}
                           </Text>
-                          <Text style={styles.lessonMeta}>{lesson.duration}</Text>
+                          <View style={styles.mapLabelRow}>
+                            <Text style={styles.lessonMeta}>{lesson.duration}</Text>
+                            <Text
+                              style={[
+                                styles.lessonTag,
+                                completed && styles.lessonTagDone,
+                                lessonLocked && styles.lessonTagLocked,
+                                !completed && !lessonLocked && styles.lessonTagNext,
+                              ]}
+                            >
+                              {completed ? 'Done' : lessonLocked ? 'Locked' : 'Up next'}
+                            </Text>
+                          </View>
                         </View>
-                        <Text
-                          style={[
-                            styles.lessonTag,
-                            completed && styles.lessonTagDone,
-                            lessonLocked && styles.lessonTagLocked,
-                            !completed && !lessonLocked && styles.lessonTagNext,
-                          ]}
-                        >
-                          {completed ? 'Done' : lessonLocked ? 'Locked' : 'Up next'}
-                        </Text>
                       </Pressable>
                       {index < module.lessons.length - 1 && (
                         <View
                           style={[
-                            styles.footstepTrail,
-                            isLeft ? styles.trailToRight : styles.trailToLeft,
+                            styles.mapConnector,
+                            isLeft ? styles.connectorToRight : styles.connectorToLeft,
                           ]}
                         >
-                          {Array.from({ length: 4 }).map((_, stepIndex) => {
-                            const flip = stepIndex % 2 === 0;
-                            return (
-                              <View
-                                key={`${lesson.id}-step-${stepIndex}`}
-                                style={[
-                                  styles.footprint,
-                                  flip ? styles.footprintRight : styles.footprintLeft,
-                                ]}
-                              >
-                                <View style={styles.footprintHeel} />
-                                <View
-                                  style={[
-                                    styles.footprintToe,
-                                    flip ? styles.footprintToeRight : styles.footprintToeLeft,
-                                  ]}
-                                />
-                              </View>
-                            );
-                          })}
+                          <Image source={footprints} style={[styles.footprint, styles.footprintOne]} />
+                          <Image source={footprints} style={[styles.footprint, styles.footprintTwo]} />
+                          <Image source={footprints} style={[styles.footprint, styles.footprintThree]} />
                         </View>
                       )}
                     </View>
@@ -227,56 +214,48 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     color: babbleColors.muted,
   },
-  pathList: {
+  mapList: {
+    paddingTop: 10,
+    gap: 18,
+  },
+  mapItem: {
     gap: 10,
-    paddingTop: 8,
   },
-  pathItem: {
-    gap: 8,
-  },
-  stepCard: {
+  mapStop: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    padding: 14,
-    borderRadius: 18,
-    backgroundColor: '#fffaf7',
-    borderWidth: 1,
-    borderColor: babbleColors.outline,
-    shadowColor: babbleColors.shadow,
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 2,
-    width: '86%',
-    maxWidth: 340,
+    paddingVertical: 6,
+    paddingHorizontal: 4,
+    width: '100%',
   },
-  stepCardLeft: {
-    alignSelf: 'flex-start',
+  mapStopLeft: {
+    justifyContent: 'flex-start',
   },
-  stepCardRight: {
-    alignSelf: 'flex-end',
+  mapStopRight: {
+    justifyContent: 'flex-end',
+    flexDirection: 'row-reverse',
   },
-  stepCardLocked: {
+  mapStopLocked: {
     opacity: 0.7,
   },
-  stepCardPressed: {
+  mapStopPressed: {
     transform: [{ scale: 0.98 }],
   },
-  lessonNode: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+  mapNode: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#fff5f0',
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: babbleColors.outline,
     shadowColor: babbleColors.shadow,
-    shadowOpacity: 0.18,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 2,
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
   },
   lessonNodeActive: {
     backgroundColor: babbleColors.primary,
@@ -295,8 +274,20 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: babbleColors.primaryText,
   },
-  lessonInfo: {
-    flex: 1,
+  mapLabel: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 16,
+    backgroundColor: '#fffaf7',
+    borderWidth: 1,
+    borderColor: babbleColors.outline,
+    maxWidth: '70%',
+  },
+  mapLabelRow: {
+    marginTop: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   lessonTitle: {
     fontSize: 14,
@@ -307,69 +298,58 @@ const styles = StyleSheet.create({
     color: babbleColors.muted,
   },
   lessonMeta: {
-    marginTop: 2,
     fontSize: 12,
     color: babbleColors.muted,
   },
   lessonTag: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '600',
     textTransform: 'uppercase',
-    letterSpacing: 0.8,
+    letterSpacing: 0.6,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    overflow: 'hidden',
   },
   lessonTagDone: {
     color: babbleColors.secondaryText,
+    backgroundColor: '#e7f4ef',
   },
   lessonTagLocked: {
     color: babbleColors.muted,
+    backgroundColor: '#f2ece8',
   },
   lessonTagNext: {
     color: babbleColors.primaryText,
+    backgroundColor: '#fde2d5',
   },
-  footstepTrail: {
+  mapConnector: {
     width: '70%',
+    alignItems: 'center',
     gap: 6,
-    paddingHorizontal: 24,
   },
-  trailToRight: {
+  connectorToRight: {
     alignSelf: 'flex-end',
+    paddingRight: 26,
   },
-  trailToLeft: {
+  connectorToLeft: {
     alignSelf: 'flex-start',
+    paddingLeft: 26,
   },
   footprint: {
-    width: 18,
-    height: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 46,
+    height: 46,
+    opacity: 0.9,
+    resizeMode: 'contain',
   },
-  footprintLeft: {
-    alignSelf: 'flex-start',
-    transform: [{ rotate: '-18deg' }],
+  footprintOne: {
+    transform: [{ rotate: '-12deg' }],
   },
-  footprintRight: {
-    alignSelf: 'flex-end',
-    transform: [{ rotate: '18deg' }],
+  footprintTwo: {
+    transform: [{ rotate: '8deg' }],
   },
-  footprintHeel: {
-    width: 14,
-    height: 9,
-    borderRadius: 7,
-    backgroundColor: '#f1d6c9',
-  },
-  footprintToe: {
-    position: 'absolute',
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#efcbbd',
-    top: -1,
-  },
-  footprintToeLeft: {
-    left: 1,
-  },
-  footprintToeRight: {
-    right: 1,
+  footprintThree: {
+    transform: [{ rotate: '-6deg' }],
   },
   moduleButton: {
     paddingVertical: 12,
