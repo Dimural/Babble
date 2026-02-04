@@ -46,60 +46,87 @@ export default function LessonsScreen() {
                 </Text>
               </View>
               <Text style={styles.moduleDescription}>{module.description}</Text>
-              <View style={styles.lessonList}>
-                <View style={styles.pathLine} />
-                <View style={styles.pathCap}>
-                  <View style={styles.pathHandle} />
-                  <View style={styles.pathWheel} />
-                  <View style={styles.pathWheel} />
-                </View>
+              <View style={styles.pathList}>
                 {module.lessons.map((lesson, index) => {
                   const completed = progress.completedLessonIds.includes(lesson.id);
                   const lessonLocked = isLocked || lesson.locked === true;
+                  const isLeft = index % 2 === 0;
                   return (
-                    <Pressable
-                      key={lesson.id}
-                      disabled={lessonLocked}
-                      onPress={() => router.push(`/lesson/${lesson.id}`)}
-                      style={[
-                        styles.lessonRow,
-                        lessonLocked && styles.lessonRowLocked,
-                      ]}
-                    >
-                      <View
-                        style={[
-                          styles.lessonNode,
-                          completed && styles.lessonNodeDone,
-                          lessonLocked && styles.lessonNodeLocked,
-                          !completed && !lessonLocked && styles.lessonNodeActive,
+                    <View key={lesson.id} style={styles.pathItem}>
+                      <Pressable
+                        disabled={lessonLocked}
+                        onPress={() => router.push(`/lesson/${lesson.id}`)}
+                        style={({ pressed }) => [
+                          styles.stepCard,
+                          isLeft ? styles.stepCardLeft : styles.stepCardRight,
+                          lessonLocked && styles.stepCardLocked,
+                          pressed && !lessonLocked && styles.stepCardPressed,
                         ]}
                       >
-                        <Text style={styles.lessonNodeText}>
-                          {completed ? 'Done' : lessonLocked ? 'Lock' : index + 1}
-                        </Text>
-                      </View>
-                      <View style={styles.lessonInfo}>
-                        <Text
+                        <View
                           style={[
-                            styles.lessonTitle,
-                            lessonLocked && styles.lessonTitleLocked,
+                            styles.lessonNode,
+                            completed && styles.lessonNodeDone,
+                            lessonLocked && styles.lessonNodeLocked,
+                            !completed && !lessonLocked && styles.lessonNodeActive,
                           ]}
                         >
-                          {lesson.title}
+                          <Text style={styles.lessonNodeText}>
+                            {completed ? 'Done' : lessonLocked ? 'Lock' : index + 1}
+                          </Text>
+                        </View>
+                        <View style={styles.lessonInfo}>
+                          <Text
+                            style={[
+                              styles.lessonTitle,
+                              lessonLocked && styles.lessonTitleLocked,
+                            ]}
+                          >
+                            {lesson.title}
+                          </Text>
+                          <Text style={styles.lessonMeta}>{lesson.duration}</Text>
+                        </View>
+                        <Text
+                          style={[
+                            styles.lessonTag,
+                            completed && styles.lessonTagDone,
+                            lessonLocked && styles.lessonTagLocked,
+                            !completed && !lessonLocked && styles.lessonTagNext,
+                          ]}
+                        >
+                          {completed ? 'Done' : lessonLocked ? 'Locked' : 'Up next'}
                         </Text>
-                        <Text style={styles.lessonMeta}>{lesson.duration}</Text>
-                      </View>
-                      <Text
-                        style={[
-                          styles.lessonTag,
-                          completed && styles.lessonTagDone,
-                          lessonLocked && styles.lessonTagLocked,
-                          !completed && !lessonLocked && styles.lessonTagNext,
-                        ]}
-                      >
-                        {completed ? 'Done' : lessonLocked ? 'Locked' : 'Up next'}
-                      </Text>
-                    </Pressable>
+                      </Pressable>
+                      {index < module.lessons.length - 1 && (
+                        <View
+                          style={[
+                            styles.footstepTrail,
+                            isLeft ? styles.trailToRight : styles.trailToLeft,
+                          ]}
+                        >
+                          {Array.from({ length: 4 }).map((_, stepIndex) => {
+                            const flip = stepIndex % 2 === 0;
+                            return (
+                              <View
+                                key={`${lesson.id}-step-${stepIndex}`}
+                                style={[
+                                  styles.footprint,
+                                  flip ? styles.footprintRight : styles.footprintLeft,
+                                ]}
+                              >
+                                <View style={styles.footprintHeel} />
+                                <View
+                                  style={[
+                                    styles.footprintToe,
+                                    flip ? styles.footprintToeRight : styles.footprintToeLeft,
+                                  ]}
+                                />
+                              </View>
+                            );
+                          })}
+                        </View>
+                      )}
+                    </View>
                   );
                 })}
               </View>
@@ -117,7 +144,7 @@ export default function LessonsScreen() {
                     isLocked && styles.moduleButtonTextDisabled,
                   ]}
                 >
-                  start journey
+                  start path
                 </Text>
               </Pressable>
             </View>
@@ -200,52 +227,41 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     color: babbleColors.muted,
   },
-  lessonList: {
-    position: 'relative',
-    paddingLeft: 18,
-    gap: 12,
-    paddingTop: 20,
+  pathList: {
+    gap: 10,
+    paddingTop: 8,
   },
-  pathLine: {
-    position: 'absolute',
-    left: 10,
-    top: 24,
-    bottom: 12,
-    width: 4,
-    borderRadius: 4,
-    backgroundColor: '#f1e2dc',
+  pathItem: {
+    gap: 8,
+  },
+  stepCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 14,
+    borderRadius: 18,
+    backgroundColor: '#fffaf7',
     borderWidth: 1,
     borderColor: babbleColors.outline,
+    shadowColor: babbleColors.shadow,
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 2,
+    width: '86%',
+    maxWidth: 340,
   },
-  pathCap: {
-    position: 'absolute',
-    left: -2,
-    top: -2,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
+  stepCardLeft: {
+    alignSelf: 'flex-start',
   },
-  pathHandle: {
-    width: 30,
-    height: 10,
-    borderRadius: 10,
-    backgroundColor: babbleColors.primary,
+  stepCardRight: {
+    alignSelf: 'flex-end',
   },
-  pathWheel: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    borderWidth: 2,
-    borderColor: babbleColors.primaryText,
-    backgroundColor: babbleColors.card,
-  },
-  lessonRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  lessonRowLocked: {
+  stepCardLocked: {
     opacity: 0.7,
+  },
+  stepCardPressed: {
+    transform: [{ scale: 0.98 }],
   },
   lessonNode: {
     width: 36,
@@ -309,6 +325,51 @@ const styles = StyleSheet.create({
   },
   lessonTagNext: {
     color: babbleColors.primaryText,
+  },
+  footstepTrail: {
+    width: '70%',
+    gap: 6,
+    paddingHorizontal: 24,
+  },
+  trailToRight: {
+    alignSelf: 'flex-end',
+  },
+  trailToLeft: {
+    alignSelf: 'flex-start',
+  },
+  footprint: {
+    width: 18,
+    height: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  footprintLeft: {
+    alignSelf: 'flex-start',
+    transform: [{ rotate: '-18deg' }],
+  },
+  footprintRight: {
+    alignSelf: 'flex-end',
+    transform: [{ rotate: '18deg' }],
+  },
+  footprintHeel: {
+    width: 14,
+    height: 9,
+    borderRadius: 7,
+    backgroundColor: '#f1d6c9',
+  },
+  footprintToe: {
+    position: 'absolute',
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#efcbbd',
+    top: -1,
+  },
+  footprintToeLeft: {
+    left: 1,
+  },
+  footprintToeRight: {
+    right: 1,
   },
   moduleButton: {
     paddingVertical: 12,
