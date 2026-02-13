@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 
 import { babbleColors, babbleRadii, babbleShadow, babbleTypography } from '@/constants/babble-theme';
-import { lessonModules } from '@/data/lessons';
+import { isLessonUnlocked, lessonModules } from '@/data/lessons';
 import { useProgress } from '@/hooks/use-progress';
 import { firebase } from '@/lib/firebase';
 
@@ -20,8 +20,7 @@ type LessonPreview = {
   duration: string;
   moduleTitle: string;
   completed: boolean;
-  locked?: boolean;
-  moduleLocked: boolean;
+  locked: boolean;
 };
 
 export default function HomeScreen() {
@@ -54,8 +53,8 @@ export default function HomeScreen() {
     module.lessons.map((lesson) => ({
       ...lesson,
       completed: progress.completedLessonIds.includes(lesson.id),
+      locked: !isLessonUnlocked(lesson.id, progress.completedLessonIds),
       moduleTitle: module.title,
-      moduleLocked: module.locked ?? false,
     })),
   );
 
@@ -67,7 +66,7 @@ export default function HomeScreen() {
   ).length;
 
   const nextLesson =
-    lessons.find((lesson) => !lesson.completed && !lesson.locked && !lesson.moduleLocked) ??
+    lessons.find((lesson) => !lesson.completed && !lesson.locked) ??
     lessons[0];
 
   return (

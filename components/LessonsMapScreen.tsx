@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   AccessibilityInfo,
   Alert,
   Animated,
@@ -20,6 +21,8 @@ import {
   babbleShadow,
   babbleTypography,
 } from '@/constants/babble-theme';
+import { getAllLessons, isLessonUnlocked } from '@/data/lessons';
+import { useProgress } from '@/hooks/use-progress';
 
 type LessonStatus = 'locked' | 'available' | 'completed';
 type LessonNode = {
@@ -32,12 +35,31 @@ type LessonNode = {
   nextIds: string[];
 };
 
-const lessons: LessonNode[] = [
-  { id: 'l1', title: 'Welcome Baby!', status: 'completed', x: 120, y: 220, icon: '👶', nextIds: ['l2'] },
-  { id: 'l2', title: 'Safe Sleep', status: 'available', x: 360, y: 180, icon: '🌙', nextIds: ['l3'] },
-  { id: 'l3', title: 'Diaper Basics', status: 'locked', x: 620, y: 260, icon: '🧷', nextIds: ['l4'] },
-  { id: 'l4', title: 'Feeding 101', status: 'locked', x: 880, y: 190, icon: '🍼', nextIds: [] },
-];
+const LESSON_ICONS = ['👶', '🧠', '🌙', '🏠', '🤱', '🍼', '🧼', '📈', '🩺', '❤️'];
+
+const buildLessonNodes = (completedLessonIds: string[]): LessonNode[] => {
+  const allLessons = getAllLessons();
+
+  return allLessons.map((lesson, index) => {
+    const row = Math.floor(index / 4);
+    const col = index % 4;
+    const zigzagCol = row % 2 === 0 ? col : 3 - col;
+
+    return {
+      id: lesson.id,
+      title: lesson.title,
+      status: completedLessonIds.includes(lesson.id)
+        ? 'completed'
+        : isLessonUnlocked(lesson.id, completedLessonIds)
+          ? 'available'
+          : 'locked',
+      x: 120 + zigzagCol * 255,
+      y: 140 + row * 165 + (zigzagCol % 2 === 0 ? 0 : 26),
+      icon: LESSON_ICONS[index % LESSON_ICONS.length],
+      nextIds: index < allLessons.length - 1 ? [allLessons[index + 1].id] : [],
+    };
+  });
+};
 
 const NODE_WIDTH = 210;
 const NODE_HEIGHT = 76;
@@ -143,12 +165,13 @@ const PathLayer = ({
       node.nextIds.map((nextId) => ({
         from: node.id,
         to: nextId,
-        status:
+        status: (
           statusById[nextId] === 'locked'
             ? 'locked'
             : node.status === 'completed'
               ? 'completed'
-              : 'available',
+              : 'available'
+        ) as LessonStatus,
       })),
     );
   }, [nodes, statusById]);
@@ -227,12 +250,6 @@ const LessonNodeButton = ({
       accessibilityLabel={`Lesson: ${node.title}, ${node.status}`}
       accessibilityState={{ disabled: isLocked }}
       onPress={handlePress}
-      onKeyDown={(event: any) => {
-        if (event?.key === 'Enter' || event?.key === ' ') {
-          event.preventDefault?.();
-          handlePress();
-        }
-      }}
       hitSlop={8}
       style={({ pressed }) => [
         styles.node,
@@ -287,16 +304,25 @@ export default function LessonsMapScreen({
 }: LessonsMapScreenProps) {
   const router = useRouter();
   const reduceMotion = useReducedMotion();
+  const { progress, loading } = useProgress();
   const [viewport, setViewport] = useState({ width: 0, height: 0 });
-  const startNodeId = startNodeIdProp ?? lessons[0]?.id;
+
+  const lessonNodes = useMemo(
+    () => buildLessonNodes(progress?.completedLessonIds ?? []),
+    [progress?.completedLessonIds],
+  );
+  const startNodeId =
+    startNodeIdProp ??
+    lessonNodes.find((node) => node.status === 'available')?.id ??
+    lessonNodes[0]?.id;
 
   const { contentWidth, contentHeight, offsetX, offsetY } = useMemo(() => {
-    if (!lessons.length) {
+    if (!lessonNodes.length) {
       return { contentWidth: 0, contentHeight: 0, offsetX: 0, offsetY: 0 };
     }
 
-    const xs = lessons.map((node) => node.x);
-    const ys = lessons.map((node) => node.y);
+    const xs = lessonNodes.map((node) => node.x);
+    const ys = lessonNodes.map((node) => node.y);
     const minX = Math.min(...xs);
     const maxX = Math.max(...xs);
     const minY = Math.min(...ys);
@@ -311,7 +337,7 @@ export default function LessonsMapScreen({
       offsetX: CONTENT_PADDING - minX,
       offsetY: CONTENT_PADDING - minY,
     };
-  }, [lessons]);
+  }, [lessonNodes]);
 
   const bounds = useMemo(
     () => computeBounds(contentWidth, contentHeight, viewport.width, viewport.height),
@@ -319,8 +345,8 @@ export default function LessonsMapScreen({
   );
 
   const centers = useMemo(
-    () => computeNodeCenters(lessons, offsetX, offsetY),
-    [lessons, offsetX, offsetY],
+    () => computeNodeCenters(lessonNodes, offsetX, offsetY),
+    [lessonNodes, offsetX, offsetY],
   );
 
   const translate = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
@@ -341,7 +367,6 @@ export default function LessonsMapScreen({
   const showLockedMessage = useCallback(() => {
     const message = 'Complete the previous lesson to unlock!';
     if (Platform.OS === 'web') {
-      // eslint-disable-next-line no-alert
       if (typeof window !== 'undefined') {
         window.alert(message);
       }
@@ -413,14 +438,24 @@ export default function LessonsMapScreen({
         onPanResponderRelease: () => {},
         onPanResponderTerminationRequest: () => false,
       }),
-    [bounds],
+    [bounds, translate],
   );
+
+  if (loading || !progress) {
+    return (
+      <View style={styles.loading}>
+        <ActivityIndicator />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.screen}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Lessons Map</Text>
-        <Text style={styles.headerSubtitle}>Follow the cozy path and explore new skills.</Text>
+        <Text style={styles.headerSubtitle}>
+          Follow the path through {lessonNodes.length} newborn-care lessons.
+        </Text>
       </View>
 
       <View
@@ -454,9 +489,14 @@ export default function LessonsMapScreen({
             <View style={[styles.star, styles.starFour]} />
           </View>
 
-          <PathLayer nodes={lessons} centers={centers} width={contentWidth} height={contentHeight} />
+          <PathLayer
+            nodes={lessonNodes}
+            centers={centers}
+            width={contentWidth}
+            height={contentHeight}
+          />
 
-          {lessons.map((node) => (
+          {lessonNodes.map((node) => (
             <LessonNodeButton
               key={node.id}
               node={node}
@@ -541,6 +581,12 @@ const renderFootprints = (
 };
 
 const styles = StyleSheet.create({
+  loading: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: babbleColors.background,
+  },
   screen: {
     flex: 1,
     backgroundColor: babbleColors.background,

@@ -7,7 +7,7 @@ export type ProgressState = {
 const STORAGE_KEY = 'babble.progress.v1';
 
 const defaultProgress: ProgressState = {
-  completedLessonIds: ['lesson-1'],
+  completedLessonIds: [],
 };
 
 const normalizeProgress = (progress: ProgressState | null): ProgressState => {
@@ -16,7 +16,7 @@ const normalizeProgress = (progress: ProgressState | null): ProgressState => {
   }
   const unique = Array.from(new Set(progress.completedLessonIds));
   return {
-    completedLessonIds: unique.length ? unique : [...defaultProgress.completedLessonIds],
+    completedLessonIds: unique,
   };
 };
 
