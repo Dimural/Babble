@@ -1,4 +1,24 @@
-export type LessonStepType = 'intro' | 'tap' | 'choice' | 'true_false';
+export type LessonStepType =
+  | 'intro'
+  | 'tap'
+  | 'choice'
+  | 'true_false'
+  | 'scenario'
+  | 'checklist'
+  | 'flashcards';
+
+export type ScenarioOption = {
+  id: string;
+  text: string;
+  feedback: string;
+  isBest?: boolean;
+};
+
+export type Flashcard = {
+  id: string;
+  front: string;
+  back: string;
+};
 
 export type LessonStep = {
   id: string;
@@ -8,6 +28,10 @@ export type LessonStep = {
   options?: string[];
   correctAnswer?: string;
   explanation?: string;
+  scenarioPrompt?: string;
+  scenarioOptions?: ScenarioOption[];
+  checklistItems?: string[];
+  flashcards?: Flashcard[];
 };
 
 export type Lesson = {
@@ -24,7 +48,7 @@ export type LessonModule = {
   lessons: Lesson[];
 };
 
-export const lessonModules: LessonModule[] = [
+const coreLessonModules: LessonModule[] = [
   {
     id: 'module-1',
     title: 'Responsive Foundations',
@@ -788,6 +812,294 @@ export const lessonModules: LessonModule[] = [
     ],
   },
 ];
+
+type ModulePracticeTemplate = {
+  flashcardsTitle: string;
+  flashcardsPrompt: string;
+  flashcards: Flashcard[];
+  scenarioTitle: string;
+  scenarioPrompt: string;
+  scenarioOptions: ScenarioOption[];
+  checklistTitle: string;
+  checklistPrompt: string;
+  checklistItems: string[];
+};
+
+const modulePracticeTemplates: Record<string, ModulePracticeTemplate> = {
+  'module-1': {
+    flashcardsTitle: 'Cue Decoder',
+    flashcardsPrompt: 'Tap each card to reveal what the cue usually means.',
+    flashcards: [
+      { id: 'f1', front: 'Early hunger cue', back: 'Rooting, hand-to-mouth, stirring before full crying.' },
+      { id: 'f2', front: 'Overstimulation cue', back: 'Turning away, stiffening, fussing, hiccups, or yawning.' },
+      { id: 'f3', front: 'Trust-building response', back: 'Respond consistently, calmly, and quickly to needs.' },
+    ],
+    scenarioTitle: 'Real-Life Decision',
+    scenarioPrompt:
+      'Your baby starts fussing and turning away while visitors keep talking loudly. What is the best first move?',
+    scenarioOptions: [
+      {
+        id: 's1',
+        text: 'Move baby to a calm environment and soothe',
+        isBest: true,
+        feedback:
+          'Best choice. Reducing stimulation and responding to cues helps baby regulate and builds trust.',
+      },
+      {
+        id: 's2',
+        text: 'Keep baby in the noise and wait for crying to stop',
+        feedback:
+          'This usually increases distress. Early, responsive soothing works better than waiting it out.',
+      },
+      {
+        id: 's3',
+        text: 'Try to distract with frequent position changes only',
+        feedback:
+          'Sometimes helpful, but first reduce stimulation and respond to the cue source directly.',
+      },
+    ],
+    checklistTitle: 'Responsive Practice',
+    checklistPrompt: 'Complete this mini practice before moving on.',
+    checklistItems: [
+      'Name one early hunger cue you will watch for today.',
+      'Choose one calming action you can do within 60 seconds.',
+      'Decide how you will ask for help if concerns persist.',
+    ],
+  },
+  'module-2': {
+    flashcardsTitle: 'Safety Snapshot',
+    flashcardsPrompt: 'Flip each card to confirm your safety memory.',
+    flashcards: [
+      { id: 'f1', front: 'Sleep position', back: 'Back to sleep for the first year.' },
+      { id: 'f2', front: 'Sleep space', back: 'Use a safety-approved crib/bassinet setup.' },
+      { id: 'f3', front: 'Heat and air', back: 'Prioritize ventilation; avoid open gas heaters in baby room.' },
+    ],
+    scenarioTitle: 'Night Setup Scenario',
+    scenarioPrompt:
+      'It is 2 a.m. and baby fell asleep in the car seat after arriving home. What should you do now?',
+    scenarioOptions: [
+      {
+        id: 's1',
+        text: 'Move baby to a safe sleep surface on their back',
+        isBest: true,
+        feedback:
+          'Correct. Transition to a safe sleep setup reduces avoidable risk from prolonged car-seat sleep.',
+      },
+      {
+        id: 's2',
+        text: 'Leave baby in the car seat for the rest of the night',
+        feedback:
+          'Not recommended. Car seats are for travel, not routine overnight sleep.',
+      },
+      {
+        id: 's3',
+        text: 'Add loose blankets around baby to keep warm',
+        feedback:
+          'Avoid loose bedding in sleep spaces. Use safer clothing/layer approaches recommended by your care team.',
+      },
+    ],
+    checklistTitle: 'Sleep Safety Drill',
+    checklistPrompt: 'Confirm each action as if you are preparing for tonight.',
+    checklistItems: [
+      'Set baby down on their back.',
+      'Check crib/bassinet surface and remove unsafe loose items.',
+      'Confirm room airflow and safe heating setup.',
+    ],
+  },
+  'module-3': {
+    flashcardsTitle: 'Feeding Cues Recall',
+    flashcardsPrompt: 'Flip all cards before continuing.',
+    flashcards: [
+      { id: 'f1', front: 'Minimum daily feed pattern', back: 'At least 8 or more feeds in 24 hours early on.' },
+      { id: 'f2', front: 'Early milk (colostrum)', back: 'Small volume, rich and protective, completely normal.' },
+      { id: 'f3', front: 'Latch principle', back: 'Bring baby to breast; aim for a deep latch.' },
+    ],
+    scenarioTitle: 'Latch Coaching Scenario',
+    scenarioPrompt:
+      'Baby is sleepy at breast with shallow latch and no clear swallowing after several minutes. What is the best next step?',
+    scenarioOptions: [
+      {
+        id: 's1',
+        text: 'Reposition for deeper latch and seek support if still ineffective',
+        isBest: true,
+        feedback:
+          'Great choice. Deep latch + early support is the safest path to effective transfer and comfort.',
+      },
+      {
+        id: 's2',
+        text: 'Keep the same latch and wait much longer without adjustment',
+        feedback:
+          'Waiting without correction often prolongs poor transfer and soreness.',
+      },
+      {
+        id: 's3',
+        text: 'Pull nipple out quickly whenever baby slows down',
+        feedback:
+          'Avoid abrupt pulling. Break suction gently before unlatching to protect nipple tissue.',
+      },
+    ],
+    checklistTitle: 'Breastfeeding Readiness',
+    checklistPrompt: 'Mark each item once you can do it confidently.',
+    checklistItems: [
+      'I can identify one early hunger cue before crying peaks.',
+      'I can describe how to position baby chest-to-chest.',
+      'I know who to contact for lactation help if feeds stay difficult.',
+    ],
+  },
+  'module-4': {
+    flashcardsTitle: 'Bottle and Formula Safety Cards',
+    flashcardsPrompt: 'Reveal all answers to complete this practice.',
+    flashcards: [
+      { id: 'f1', front: 'Sterile formula format', back: 'Ready-to-feed formula is sterile in packaging.' },
+      { id: 'f2', front: 'Paced bottle feeding', back: 'Keep baby upright and let baby set pace with pauses.' },
+      { id: 'f3', front: 'Bedtime bottle rule', back: 'Never put baby to bed with a bottle.' },
+    ],
+    scenarioTitle: 'Preparation Scenario',
+    scenarioPrompt:
+      'You prepared formula but baby fell asleep. The bottle has been sitting out for a while. What is safest?',
+    scenarioOptions: [
+      {
+        id: 's1',
+        text: 'Discard and prepare fresh formula when needed',
+        isBest: true,
+        feedback:
+          'Correct. Timely handling and fresh prep reduce contamination risk.',
+      },
+      {
+        id: 's2',
+        text: 'Warm and reuse the same bottle later regardless of time',
+        feedback:
+          'Not safe. The handbook emphasizes strict handling windows for prepared formula.',
+      },
+      {
+        id: 's3',
+        text: 'Leave the bottle in the crib for night waking',
+        feedback:
+          'Avoid this. Never put baby to bed with a bottle.',
+      },
+    ],
+    checklistTitle: 'Safe Feed Workflow',
+    checklistPrompt: 'Complete this mini workflow in order.',
+    checklistItems: [
+      'Use clean preparation tools and safe water.',
+      'Feed in upright paced style and pause to burp.',
+      'Discard unused prepared formula after safe time limits.',
+    ],
+  },
+  'module-5': {
+    flashcardsTitle: 'Daily Care Recall',
+    flashcardsPrompt: 'Tap cards to unlock the key points.',
+    flashcards: [
+      { id: 'f1', front: 'Diaper trend check', back: 'Output usually rises as intake improves in early days.' },
+      { id: 'f2', front: 'Nail care', back: 'Toenails straight across; fingernails gently rounded.' },
+      { id: 'f3', front: 'Fever threshold', back: 'Rectal > 100.4 F (38.0 C) needs urgent medical contact.' },
+    ],
+    scenarioTitle: 'Home Monitoring Scenario',
+    scenarioPrompt:
+      'Baby has poor feeding today, fewer wet diapers, and now feels warm. What is the safest response?',
+    scenarioOptions: [
+      {
+        id: 's1',
+        text: 'Check rectal temperature and call pediatric care promptly if elevated',
+        isBest: true,
+        feedback:
+          'Correct. This combines objective temperature check with timely escalation.',
+      },
+      {
+        id: 's2',
+        text: 'Wait until tomorrow to see if things improve',
+        feedback:
+          'Waiting may delay needed care when warning signs are present.',
+      },
+      {
+        id: 's3',
+        text: 'Give extra water first and monitor only',
+        feedback:
+          'Do not add extra water in newborn feeding unless specifically directed by your clinician.',
+      },
+    ],
+    checklistTitle: 'Daily Safety Checklist',
+    checklistPrompt: 'Confirm your action plan for the next 24 hours.',
+    checklistItems: [
+      'Track feed count and diaper output.',
+      'Use safe hygiene routines for skin, cord, and diaper care.',
+      'Know exactly when and how to call for urgent help.',
+    ],
+  },
+};
+
+const buildInteractivePracticeSteps = (moduleId: string, lesson: Lesson) => {
+  const template = modulePracticeTemplates[moduleId];
+  if (!template) {
+    return [];
+  }
+
+  const base = lesson.steps.length;
+  const bestOption = template.scenarioOptions.find((option) => option.isBest);
+
+  return [
+    {
+      id: `step-${base + 1}`,
+      type: 'flashcards' as const,
+      title: template.flashcardsTitle,
+      prompt: template.flashcardsPrompt,
+      flashcards: template.flashcards,
+    },
+    {
+      id: `step-${base + 2}`,
+      type: 'scenario' as const,
+      title: template.scenarioTitle,
+      scenarioPrompt: template.scenarioPrompt,
+      scenarioOptions: template.scenarioOptions,
+      correctAnswer: bestOption?.text,
+      explanation: 'Practice choices in realistic moments so your response is automatic when stress is high.',
+    },
+    {
+      id: `step-${base + 3}`,
+      type: 'checklist' as const,
+      title: template.checklistTitle,
+      prompt: template.checklistPrompt,
+      checklistItems: template.checklistItems,
+    },
+  ];
+};
+
+const buildEnhancedLessonSteps = (moduleId: string, lesson: Lesson): LessonStep[] => {
+  const practiceSteps = buildInteractivePracticeSteps(moduleId, lesson);
+  if (!practiceSteps.length) {
+    return lesson.steps;
+  }
+
+  const [flashcardsStep, scenarioStep, checklistStep] = practiceSteps;
+  const [firstCoreStep, ...remainingCoreSteps] = lesson.steps;
+
+  if (!firstCoreStep) {
+    return practiceSteps.map((step, index) => ({ ...step, id: `step-${index + 1}` }));
+  }
+
+  const splitIndex = Math.max(1, Math.floor(remainingCoreSteps.length / 2));
+  const earlyCoreSteps = remainingCoreSteps.slice(0, splitIndex);
+  const lateCoreSteps = remainingCoreSteps.slice(splitIndex);
+
+  const mixedSteps: LessonStep[] = [
+    firstCoreStep,
+    flashcardsStep,
+    ...earlyCoreSteps,
+    scenarioStep,
+    ...lateCoreSteps,
+    checklistStep,
+  ];
+
+  return mixedSteps.map((step, index) => ({ ...step, id: `step-${index + 1}` }));
+};
+
+export const lessonModules: LessonModule[] = coreLessonModules.map((module) => ({
+  ...module,
+  lessons: module.lessons.map((lesson) => ({
+    ...lesson,
+    steps: buildEnhancedLessonSteps(module.id, lesson),
+  })),
+}));
 
 export const getAllLessons = () => lessonModules.flatMap((module) => module.lessons);
 

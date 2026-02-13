@@ -20,6 +20,7 @@ import {
   isLessonUnlocked,
   lessonModules,
   LessonStep,
+  ScenarioOption,
 } from '@/data/lessons';
 import { useProgress } from '@/hooks/use-progress';
 
@@ -30,7 +31,10 @@ type LessonPreview = {
 };
 
 const isQuizStep = (step: LessonStep) =>
-  step.type === 'choice' || step.type === 'true_false';
+  step.type === 'choice' || step.type === 'true_false' || step.type === 'scenario';
+
+const isInteractivePracticeStep = (step: LessonStep) =>
+  step.type === 'scenario' || step.type === 'checklist' || step.type === 'flashcards';
 
 export default function LessonScreen() {
   const router = useRouter();
@@ -40,6 +44,9 @@ export default function LessonScreen() {
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [answeredCurrentStep, setAnsweredCurrentStep] = useState(false);
   const [correctAnswers, setCorrectAnswers] = useState(0);
+  const [checklistState, setChecklistState] = useState<Record<string, boolean>>({});
+  const [revealedCards, setRevealedCards] = useState<Record<string, boolean>>({});
+  const [viewedCards, setViewedCards] = useState<Record<string, boolean>>({});
   const { loading, progress, completeLesson } = useProgress();
 
   const lesson = useMemo<LessonPreview>(() => {
@@ -54,7 +61,7 @@ export default function LessonScreen() {
             id: 'step-1',
             type: 'intro',
             title: 'Welcome to your lesson',
-            prompt: 'Each step is short, practical, and designed to build confidence.',
+            prompt: 'Each step is practical and active. You will practice while you learn.',
           },
         ],
       }
@@ -70,39 +77,140 @@ export default function LessonScreen() {
   }, [lesson.id, progress]);
 
   const totalSteps = lesson.steps.length;
-  const quizStepCount = useMemo(
-    () => lesson.steps.filter((step) => isQuizStep(step)).length,
-    [lesson.steps],
-  );
   const isComplete = stepIndex >= totalSteps;
   const step = lesson.steps[stepIndex];
+
+  const quizStepCount = useMemo(
+    () => lesson.steps.filter((candidate) => isQuizStep(candidate)).length,
+    [lesson.steps],
+  );
+  const interactivePracticeCount = useMemo(
+    () => lesson.steps.filter((candidate) => isInteractivePracticeStep(candidate)).length,
+    [lesson.steps],
+  );
 
   useEffect(() => {
     setStepIndex(0);
     setSelectedAnswer(null);
     setAnsweredCurrentStep(false);
     setCorrectAnswers(0);
+    setChecklistState({});
+    setRevealedCards({});
+    setViewedCards({});
   }, [lesson.id]);
 
   useEffect(() => {
     setSelectedAnswer(null);
     setAnsweredCurrentStep(false);
-  }, [stepIndex]);
+    setChecklistState({});
+    setRevealedCards({});
+    setViewedCards({});
 
-  const handleAnswer = (answer: string) => {
-    if (!step || !isQuizStep(step) || answeredCurrentStep) {
+    if (!step) {
+      return;
+    }
+
+    if (step.type === 'checklist') {
+      const initial = (step.checklistItems ?? []).reduce<Record<string, boolean>>((acc, item) => {
+        acc[item] = false;
+        return acc;
+      }, {});
+      setChecklistState(initial);
+    }
+  }, [step]);
+
+  const markAnswered = (answer: string, isCorrect: boolean) => {
+    if (answeredCurrentStep) {
       return;
     }
 
     setSelectedAnswer(answer);
     setAnsweredCurrentStep(true);
 
-    if (step.correctAnswer && answer === step.correctAnswer) {
+    if (isCorrect) {
       setCorrectAnswers((prev) => prev + 1);
     }
   };
 
+  const handleAnswer = (answer: string) => {
+    if (!step || !isQuizStep(step) || answeredCurrentStep) {
+      return;
+    }
+    markAnswered(answer, step.correctAnswer === answer);
+  };
+
+  const handleScenarioChoice = (option: ScenarioOption) => {
+    if (!step || step.type !== 'scenario' || answeredCurrentStep) {
+      return;
+    }
+    markAnswered(option.text, option.text === step.correctAnswer);
+  };
+
+  const toggleChecklistItem = (item: string) => {
+    if (!step || step.type !== 'checklist') {
+      return;
+    }
+    setChecklistState((prev) => ({ ...prev, [item]: !prev[item] }));
+  };
+
+  const handleFlashcardPress = (cardId: string) => {
+    if (!step || step.type !== 'flashcards') {
+      return;
+    }
+    setRevealedCards((prev) => ({ ...prev, [cardId]: !prev[cardId] }));
+    setViewedCards((prev) => ({ ...prev, [cardId]: true }));
+  };
+
+  const checklistProgress = step?.type === 'checklist'
+    ? (step.checklistItems ?? []).filter((item) => checklistState[item]).length
+    : 0;
+  const checklistTotal = step?.type === 'checklist' ? (step.checklistItems ?? []).length : 0;
+  const checklistComplete = checklistTotal > 0 && checklistProgress === checklistTotal;
+
+  const flashcardsSeen = step?.type === 'flashcards'
+    ? (step.flashcards ?? []).filter((card) => viewedCards[card.id]).length
+    : 0;
+  const flashcardsTotal = step?.type === 'flashcards' ? (step.flashcards ?? []).length : 0;
+  const flashcardsComplete = flashcardsTotal > 0 && flashcardsSeen === flashcardsTotal;
+
+  const canContinue = (() => {
+    if (!step) {
+      return false;
+    }
+    if (step.type === 'intro' || step.type === 'tap') {
+      return true;
+    }
+    if (isQuizStep(step)) {
+      return answeredCurrentStep;
+    }
+    if (step.type === 'checklist') {
+      return checklistComplete;
+    }
+    if (step.type === 'flashcards') {
+      return flashcardsComplete;
+    }
+    return false;
+  })();
+
+  const selectedScenarioOption = step?.type === 'scenario'
+    ? step.scenarioOptions?.find((option) => option.text === selectedAnswer)
+    : undefined;
+
+  const scorePercent = quizStepCount
+    ? Math.round((correctAnswers / quizStepCount) * 100)
+    : 100;
+  const scoreMessage =
+    scorePercent >= 90
+      ? 'Excellent retention.'
+      : scorePercent >= 70
+        ? 'Strong progress. Run the lesson one more time to lock mastery.'
+        : 'You are building the foundation. Replay this lesson and focus on scenario steps.';
+
   const handleNext = async () => {
+    if (!isComplete && !canContinue) {
+      return;
+    }
+
     if (isComplete) {
       router.replace('/(tabs)');
       return;
@@ -122,28 +230,16 @@ export default function LessonScreen() {
       return 'idle';
     }
 
-    const correctAnswer = step.correctAnswer;
-
-    if (option === correctAnswer) {
+    if (option === step.correctAnswer) {
       return 'correct';
     }
 
-    if (option === selectedAnswer && selectedAnswer !== correctAnswer) {
+    if (option === selectedAnswer && selectedAnswer !== step.correctAnswer) {
       return 'incorrect';
     }
 
     return 'idle';
   };
-
-  const scorePercent = quizStepCount
-    ? Math.round((correctAnswers / quizStepCount) * 100)
-    : 100;
-  const scoreMessage =
-    scorePercent >= 90
-      ? 'Excellent retention.'
-      : scorePercent >= 70
-        ? 'Strong progress. Review any missed points once more.'
-        : 'Good start. A quick replay will lock these skills in.';
 
   if (loading) {
     return (
@@ -210,6 +306,9 @@ export default function LessonScreen() {
             <Text style={styles.cardBody}>
               Quiz score: {correctAnswers}/{quizStepCount} ({scorePercent}%)
             </Text>
+            <Text style={styles.cardBody}>
+              Practice rounds completed: {interactivePracticeCount}
+            </Text>
             <Text style={styles.feedbackBody}>{scoreMessage}</Text>
             <Pressable onPress={() => router.replace('/(tabs)')} style={styles.primaryButton}>
               <Text style={styles.primaryButtonText}>Back to Home</Text>
@@ -266,35 +365,114 @@ export default function LessonScreen() {
               </View>
             )}
 
+            {step.type === 'scenario' && (
+              <View style={styles.interactiveBlock}>
+                {step.scenarioPrompt ? (
+                  <Text style={styles.scenarioPrompt}>{step.scenarioPrompt}</Text>
+                ) : null}
+                <View style={styles.choiceList}>
+                  {step.scenarioOptions?.map((option) => {
+                    const answerState = getAnswerState(option.text);
+                    return (
+                      <Pressable
+                        key={option.id}
+                        onPress={() => handleScenarioChoice(option)}
+                        disabled={answeredCurrentStep}
+                        style={[
+                          styles.choiceChip,
+                          answerState === 'correct' && styles.choiceChipCorrect,
+                          answerState === 'incorrect' && styles.choiceChipIncorrect,
+                          answeredCurrentStep && styles.choiceChipDisabled,
+                        ]}
+                      >
+                        <Text style={styles.choiceText}>{option.text}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+            )}
+
+            {step.type === 'checklist' && (
+              <View style={styles.interactiveBlock}>
+                <Text style={styles.interactiveMeta}>
+                  {checklistProgress}/{checklistTotal} complete
+                </Text>
+                <View style={styles.checklistList}>
+                  {step.checklistItems?.map((item) => {
+                    const checked = checklistState[item];
+                    return (
+                      <Pressable
+                        key={item}
+                        onPress={() => toggleChecklistItem(item)}
+                        style={[styles.checklistItem, checked && styles.checklistItemDone]}
+                      >
+                        <View style={[styles.checkbox, checked && styles.checkboxChecked]}>
+                          <Text style={styles.checkboxText}>{checked ? '✓' : ''}</Text>
+                        </View>
+                        <Text style={styles.checklistText}>{item}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+            )}
+
+            {step.type === 'flashcards' && (
+              <View style={styles.interactiveBlock}>
+                <Text style={styles.interactiveMeta}>
+                  Cards revealed: {flashcardsSeen}/{flashcardsTotal}
+                </Text>
+                <View style={styles.flashcardList}>
+                  {step.flashcards?.map((card) => {
+                    const revealed = revealedCards[card.id];
+                    return (
+                      <Pressable
+                        key={card.id}
+                        onPress={() => handleFlashcardPress(card.id)}
+                        style={[styles.flashcard, revealed && styles.flashcardRevealed]}
+                      >
+                        <Text style={styles.flashcardLabel}>
+                          {revealed ? 'Answer' : 'Tap to reveal'}
+                        </Text>
+                        <Text style={styles.flashcardText}>
+                          {revealed ? card.back : card.front}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+            )}
+
             {isQuizStep(step) && answeredCurrentStep && (
               <View style={styles.feedbackCard}>
                 <Text style={styles.feedbackTitle}>
                   {selectedAnswer === step.correctAnswer ? 'Correct' : 'Not quite'}
                 </Text>
                 <Text style={styles.feedbackBody}>
-                  {step.explanation ?? 'Review the guidance and continue.'}
+                  {step.type === 'scenario' && selectedScenarioOption
+                    ? selectedScenarioOption.feedback
+                    : step.explanation ?? 'Review the guidance and continue.'}
                 </Text>
+                {step.type === 'scenario' && step.explanation ? (
+                  <Text style={styles.feedbackBody}>{step.explanation}</Text>
+                ) : null}
               </View>
             )}
 
-            {(step.type === 'intro' || step.type === 'tap') && (
-              <Pressable onPress={handleNext} style={styles.primaryButton}>
-                <Text style={styles.primaryButtonText}>Tap to continue</Text>
-              </Pressable>
-            )}
-
-            {isQuizStep(step) && (
-              <Pressable
-                onPress={handleNext}
-                disabled={!answeredCurrentStep}
-                style={[
-                  styles.primaryButton,
-                  !answeredCurrentStep && styles.primaryButtonDisabled,
-                ]}
-              >
-                <Text style={styles.primaryButtonText}>Continue</Text>
-              </Pressable>
-            )}
+            <Pressable
+              onPress={handleNext}
+              disabled={!canContinue}
+              style={[
+                styles.primaryButton,
+                !canContinue && styles.primaryButtonDisabled,
+              ]}
+            >
+              <Text style={styles.primaryButtonText}>
+                {canContinue ? 'Continue' : 'Complete activity to continue'}
+              </Text>
+            </Pressable>
           </View>
         )}
       </ScrollView>
@@ -374,6 +552,19 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     color: babbleColors.muted,
   },
+  interactiveBlock: {
+    gap: 10,
+  },
+  interactiveMeta: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: babbleColors.primaryText,
+  },
+  scenarioPrompt: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: babbleColors.text,
+  },
   choiceList: {
     gap: 10,
   },
@@ -398,6 +589,77 @@ const styles = StyleSheet.create({
   },
   choiceText: {
     fontSize: 14,
+    color: babbleColors.text,
+  },
+  checklistList: {
+    gap: 8,
+  },
+  checklistItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderWidth: 1,
+    borderColor: babbleColors.outline,
+    borderRadius: babbleRadii.card,
+    backgroundColor: '#fffaf6',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+  },
+  checklistItemDone: {
+    borderColor: '#78b89b',
+    backgroundColor: '#ecfbf2',
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 1,
+    borderColor: babbleColors.outline,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+  },
+  checkboxChecked: {
+    borderColor: '#78b89b',
+    backgroundColor: '#d6f4e3',
+  },
+  checkboxText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#2f6e54',
+  },
+  checklistText: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 18,
+    color: babbleColors.text,
+  },
+  flashcardList: {
+    gap: 10,
+  },
+  flashcard: {
+    borderWidth: 1,
+    borderColor: babbleColors.outline,
+    borderRadius: babbleRadii.card,
+    backgroundColor: '#fffaf6',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    gap: 6,
+  },
+  flashcardRevealed: {
+    borderColor: '#9ad5d6',
+    backgroundColor: '#eff8f8',
+  },
+  flashcardLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+    color: babbleColors.muted,
+  },
+  flashcardText: {
+    fontSize: 14,
+    lineHeight: 19,
     color: babbleColors.text,
   },
   feedbackCard: {
@@ -431,6 +693,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: babbleColors.primaryText,
+    textAlign: 'center',
   },
   blob: {
     position: 'absolute',
