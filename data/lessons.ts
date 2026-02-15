@@ -825,6 +825,13 @@ type ModulePracticeTemplate = {
   checklistItems: string[];
 };
 
+type ModuleDepthTemplate = {
+  deepDiveFocus: string;
+  watchFor: string;
+  actionCue: string;
+  teachBackPrompt: string;
+};
+
 const modulePracticeTemplates: Record<string, ModulePracticeTemplate> = {
   'module-1': {
     flashcardsTitle: 'Cue Decoder',
@@ -1028,6 +1035,187 @@ const modulePracticeTemplates: Record<string, ModulePracticeTemplate> = {
   },
 };
 
+const moduleDepthTemplates: Record<string, ModuleDepthTemplate> = {
+  'module-1': {
+    deepDiveFocus: 'responsive cue-reading in ordinary routines',
+    watchFor: 'small, early cues before crying escalates',
+    actionCue: 'pause, identify the likely need, and respond in under one minute',
+    teachBackPrompt: 'describe how your response changes baby stress level and trust over time',
+  },
+  'module-2': {
+    deepDiveFocus: 'safe-sleep setup and predictable household safety checks',
+    watchFor: 'risk-adding shortcuts when tired (extra blankets, unsafe sleep location, rushed setup)',
+    actionCue: 'run the same 30-second safety scan before each sleep',
+    teachBackPrompt: 'explain why consistency at 2 a.m. matters as much as daytime routines',
+  },
+  'module-3': {
+    deepDiveFocus: 'feeding rhythm, latch quality, and early milk transition signals',
+    watchFor: 'cluster feeding, shallow latch patterns, and ineffective transfer signs',
+    actionCue: 'reset positioning early and seek support before soreness becomes severe',
+    teachBackPrompt: 'summarize how frequent feeds and deep latch support both intake and comfort',
+  },
+  'module-4': {
+    deepDiveFocus: 'safe preparation flow and paced bottle technique',
+    watchFor: 'timing mistakes, inaccurate mixing, and overfeeding pressure',
+    actionCue: 'follow a repeatable prep-check-feed-discard sequence every time',
+    teachBackPrompt: 'teach how paced feeding protects regulation instead of forcing speed',
+  },
+  'module-5': {
+    deepDiveFocus: 'daily monitoring habits that catch red flags early',
+    watchFor: 'changes in diapers, feeding behavior, tone, or temperature trends',
+    actionCue: 'track objective signals and escalate concerns the same day when patterns worsen',
+    teachBackPrompt: 'explain which signs are monitor-at-home versus call-now situations',
+  },
+};
+
+const appendLearningSections = (
+  base: string | undefined,
+  sections: Array<{ heading: string; body: string }>,
+) => {
+  if (!base) {
+    return base;
+  }
+
+  return [
+    base,
+    ...sections.map((section) => `${section.heading}: ${section.body}`),
+  ].join('\n\n');
+};
+
+const buildExpandedStepCopy = (
+  moduleId: string,
+  lesson: Lesson,
+  step: LessonStep,
+): LessonStep => {
+  const depthTemplate = moduleDepthTemplates[moduleId];
+  if (!depthTemplate) {
+    return step;
+  }
+
+  const prompt = appendLearningSections(step.prompt, [
+    {
+      heading: 'Why this matters',
+      body:
+        `This lesson focuses on ${depthTemplate.deepDiveFocus}. Consistent decisions in these moments ` +
+        'reduce stress and make your next decision easier.',
+    },
+    {
+      heading: 'Watch for this',
+      body:
+        `${depthTemplate.watchFor}. Use this step title as a cue to pause before reacting on autopilot.`,
+    },
+    {
+      heading: 'Try this now',
+      body:
+        `Use this exact sequence: ${depthTemplate.actionCue}. Then check if baby settles or feeding/sleep flow improves.`,
+    },
+    {
+      heading: 'Teach-back',
+      body:
+        `In one sentence, ${depthTemplate.teachBackPrompt}. If you cannot explain it simply yet, reread and repeat.`,
+    },
+  ]);
+
+  const explanation = appendLearningSections(step.explanation, [
+    {
+      heading: 'Deep check',
+      body:
+        `Connect this answer to ${lesson.title.toLowerCase()} and one real routine you handle daily.`,
+    },
+    {
+      heading: 'Retention move',
+      body:
+        'Say the reason out loud and decide one concrete action you will do in your next care window.',
+    },
+  ]);
+
+  const scenarioPrompt = appendLearningSections(step.scenarioPrompt, [
+    {
+      heading: 'Decision lens',
+      body:
+        'Pick the action that lowers immediate risk first, then supports comfort and consistency.',
+    },
+    {
+      heading: 'After-action review',
+      body:
+        'Before choosing, ask what you would do in the next 5 minutes if symptoms worsen.',
+    },
+  ]);
+
+  const scenarioOptions = step.scenarioOptions?.map((option) => ({
+    ...option,
+    feedback: appendLearningSections(option.feedback, [
+      {
+        heading: 'Coach note',
+        body:
+          'Strong decisions are repeatable under stress. Practice this choice until it feels automatic.',
+      },
+    ]) ?? option.feedback,
+  }));
+
+  return {
+    ...step,
+    prompt,
+    explanation,
+    scenarioPrompt,
+    scenarioOptions,
+  };
+};
+
+const buildDepthExtensionSteps = (moduleId: string, lesson: Lesson): LessonStep[] => {
+  const template = moduleDepthTemplates[moduleId];
+  if (!template) {
+    return [];
+  }
+
+  const base = lesson.steps.length;
+
+  return [
+    {
+      id: `step-${base + 1}`,
+      type: 'tap',
+      title: `Deep dive: ${lesson.title}`,
+      prompt: appendLearningSections(
+        `Slow this lesson down and connect it to your real environment, not just the screen.`,
+        [
+          {
+            heading: 'Focus',
+            body:
+              `Today you are strengthening ${template.deepDiveFocus}. This is where confidence comes from repetition, not speed.`,
+          },
+          {
+            heading: 'Friction point',
+            body:
+              `${template.watchFor}. Most errors happen when routines are rushed or assumptions replace observation.`,
+          },
+          {
+            heading: 'Micro-drill',
+            body:
+              `Run one 60-second rehearsal now: ${template.actionCue}. Repeat it twice to build automaticity.`,
+          },
+          {
+            heading: 'Commitment',
+            body:
+              'State one specific context where you will apply this skill in the next 24 hours.',
+          },
+        ],
+      ),
+    },
+    {
+      id: `step-${base + 2}`,
+      type: 'checklist',
+      title: `Teach-back challenge: ${lesson.title}`,
+      prompt:
+        'Mark each item only after you can explain it clearly without looking back at the previous cards.',
+      checklistItems: [
+        `I can explain the core idea of "${lesson.title}" in plain language.`,
+        `I can name one warning pattern I will watch for early.`,
+        `I can state one concrete action I will take in my next care routine.`,
+      ],
+    },
+  ];
+};
+
 const buildInteractivePracticeSteps = (moduleId: string, lesson: Lesson) => {
   const template = modulePracticeTemplates[moduleId];
   if (!template) {
@@ -1065,39 +1253,73 @@ const buildInteractivePracticeSteps = (moduleId: string, lesson: Lesson) => {
 };
 
 const buildEnhancedLessonSteps = (moduleId: string, lesson: Lesson): LessonStep[] => {
+  const depthSteps = buildDepthExtensionSteps(moduleId, lesson);
   const practiceSteps = buildInteractivePracticeSteps(moduleId, lesson);
-  if (!practiceSteps.length) {
+  if (!practiceSteps.length && !depthSteps.length) {
     return lesson.steps;
   }
 
   const [flashcardsStep, scenarioStep, checklistStep] = practiceSteps;
+  const [deepDiveStep, teachBackStep] = depthSteps;
   const [firstCoreStep, ...remainingCoreSteps] = lesson.steps;
 
   if (!firstCoreStep) {
-    return practiceSteps.map((step, index) => ({ ...step, id: `step-${index + 1}` }));
+    return [...depthSteps, ...practiceSteps].map((step, index) => ({ ...step, id: `step-${index + 1}` }));
   }
 
   const splitIndex = Math.max(1, Math.floor(remainingCoreSteps.length / 2));
   const earlyCoreSteps = remainingCoreSteps.slice(0, splitIndex);
   const lateCoreSteps = remainingCoreSteps.slice(splitIndex);
 
-  const mixedSteps: LessonStep[] = [
-    firstCoreStep,
-    flashcardsStep,
-    ...earlyCoreSteps,
-    scenarioStep,
-    ...lateCoreSteps,
-    checklistStep,
-  ];
+  const mixedSteps: LessonStep[] = [firstCoreStep];
+
+  if (deepDiveStep) {
+    mixedSteps.push(deepDiveStep);
+  }
+  if (flashcardsStep) {
+    mixedSteps.push(flashcardsStep);
+  }
+
+  mixedSteps.push(...earlyCoreSteps);
+
+  if (scenarioStep) {
+    mixedSteps.push(scenarioStep);
+  }
+
+  mixedSteps.push(...lateCoreSteps);
+
+  if (teachBackStep) {
+    mixedSteps.push(teachBackStep);
+  }
+  if (checklistStep) {
+    mixedSteps.push(checklistStep);
+  }
 
   return mixedSteps.map((step, index) => ({ ...step, id: `step-${index + 1}` }));
+};
+
+const extendLessonDuration = (duration: string) => {
+  const match = duration.match(/\d+/);
+  if (!match) {
+    return duration;
+  }
+
+  const minutes = Number.parseInt(match[0], 10);
+  return `${minutes + 6} min`;
 };
 
 export const lessonModules: LessonModule[] = coreLessonModules.map((module) => ({
   ...module,
   lessons: module.lessons.map((lesson) => ({
     ...lesson,
-    steps: buildEnhancedLessonSteps(module.id, lesson),
+    duration: extendLessonDuration(lesson.duration),
+    steps: buildEnhancedLessonSteps(
+      module.id,
+      {
+        ...lesson,
+        steps: lesson.steps.map((step) => buildExpandedStepCopy(module.id, lesson, step)),
+      },
+    ),
   })),
 }));
 

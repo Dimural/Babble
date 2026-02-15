@@ -30,11 +30,105 @@ type LessonPreview = {
   steps: LessonStep[];
 };
 
+type LearningMode = 'understand' | 'example' | 'recap';
+
+type StructuredSectionTone = 'focus' | 'watch' | 'action' | 'teach' | 'detail';
+
+type StructuredSection = {
+  heading: string;
+  body: string;
+  tone: StructuredSectionTone;
+};
+
 const isQuizStep = (step: LessonStep) =>
   step.type === 'choice' || step.type === 'true_false' || step.type === 'scenario';
 
 const isInteractivePracticeStep = (step: LessonStep) =>
   step.type === 'scenario' || step.type === 'checklist' || step.type === 'flashcards';
+
+const reflectionOptions: { id: LearningMode; label: string }[] = [
+  { id: 'understand', label: 'I get it' },
+  { id: 'example', label: 'Show example' },
+  { id: 'recap', label: 'Quick recap' },
+];
+
+const getSectionTone = (heading: string): StructuredSectionTone => {
+  const normalized = heading.toLowerCase();
+
+  if (
+    normalized.includes('why this matters')
+    || normalized.includes('focus')
+    || normalized.includes('decision lens')
+    || normalized.includes('deep check')
+  ) {
+    return 'focus';
+  }
+  if (normalized.includes('watch') || normalized.includes('friction')) {
+    return 'watch';
+  }
+  if (normalized.includes('try this now') || normalized.includes('action') || normalized.includes('micro-drill')) {
+    return 'action';
+  }
+  if (
+    normalized.includes('teach-back')
+    || normalized.includes('retention')
+    || normalized.includes('commitment')
+    || normalized.includes('after-action')
+  ) {
+    return 'teach';
+  }
+
+  return 'detail';
+};
+
+const parseStructuredText = (raw?: string) => {
+  if (!raw) {
+    return { lead: undefined as string | undefined, sections: [] as StructuredSection[] };
+  }
+
+  const parts = raw
+    .split(/\n\s*\n/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  const [lead, ...rest] = parts;
+  const sections: StructuredSection[] = rest.map((part) => {
+    const match = part.match(/^([^:]{2,40}):\s*([\s\S]+)$/);
+    const heading = match ? match[1].trim() : 'Detail';
+    const body = match ? match[2].trim() : part;
+    return {
+      heading,
+      body,
+      tone: getSectionTone(heading),
+    };
+  });
+
+  return { lead, sections };
+};
+
+const getReflectionResponse = (mode: LearningMode, step: LessonStep, lessonTitle: string) => {
+  if (mode === 'understand') {
+    return [
+      `Connection: "${step.title}" is not a stand-alone fact. It supports the full routine in ${lessonTitle}.`,
+      'Action check: Name the first thing you will do when this situation appears again.',
+      'Self-check: If you had to explain this to another caregiver in 20 seconds, could you?',
+    ].join('\n\n');
+  }
+
+  if (mode === 'example') {
+    return [
+      'Real moment: You are tired, the room is noisy, and baby cues are changing quickly.',
+      'Best move: Pause, scan cues, and do the safest lowest-risk action first.',
+      `Practice line: "For ${step.title}, I will act early and stay consistent instead of waiting for escalation."`,
+    ].join('\n\n');
+  }
+
+  return [
+    `Core idea: ${step.title}.`,
+    'Remember this sequence: observe early -> choose low-risk response -> reassess within minutes.',
+    'Retention tip: Repeat the same sequence twice today so it becomes automatic under stress.',
+  ].join('\n\n');
+};
 
 export default function LessonScreen() {
   const router = useRouter();
@@ -47,6 +141,7 @@ export default function LessonScreen() {
   const [checklistState, setChecklistState] = useState<Record<string, boolean>>({});
   const [revealedCards, setRevealedCards] = useState<Record<string, boolean>>({});
   const [viewedCards, setViewedCards] = useState<Record<string, boolean>>({});
+  const [learningMode, setLearningMode] = useState<LearningMode | null>(null);
   const { loading, progress, completeLesson } = useProgress();
 
   const lesson = useMemo<LessonPreview>(() => {
@@ -97,6 +192,7 @@ export default function LessonScreen() {
     setChecklistState({});
     setRevealedCards({});
     setViewedCards({});
+    setLearningMode(null);
   }, [lesson.id]);
 
   useEffect(() => {
@@ -105,6 +201,7 @@ export default function LessonScreen() {
     setChecklistState({});
     setRevealedCards({});
     setViewedCards({});
+    setLearningMode(null);
 
     if (!step) {
       return;
@@ -178,7 +275,7 @@ export default function LessonScreen() {
       return false;
     }
     if (step.type === 'intro' || step.type === 'tap') {
-      return true;
+      return learningMode !== null;
     }
     if (isQuizStep(step)) {
       return answeredCurrentStep;
@@ -191,6 +288,16 @@ export default function LessonScreen() {
     }
     return false;
   })();
+
+  const promptContent = parseStructuredText(step?.prompt);
+  const scenarioPromptContent = step?.type === 'scenario'
+    ? parseStructuredText(step?.scenarioPrompt)
+    : { lead: undefined as string | undefined, sections: [] as StructuredSection[] };
+  const reflectionContent = step
+    && (step.type === 'intro' || step.type === 'tap')
+    && learningMode
+    ? parseStructuredText(getReflectionResponse(learningMode, step, lesson.title))
+    : { lead: undefined as string | undefined, sections: [] as StructuredSection[] };
 
   const selectedScenarioOption = step?.type === 'scenario'
     ? step.scenarioOptions?.find((option) => option.text === selectedAnswer)
@@ -317,7 +424,72 @@ export default function LessonScreen() {
         ) : (
           <View style={styles.card}>
             <Text style={styles.cardTitle}>{step.title}</Text>
-            {step.prompt ? <Text style={styles.cardBody}>{step.prompt}</Text> : null}
+            {step.prompt ? (
+              <View style={styles.narrativeStack}>
+                {promptContent.lead ? (
+                  <Text style={styles.narrativeLead}>{promptContent.lead}</Text>
+                ) : null}
+                {promptContent.sections.map((section, index) => (
+                  <View
+                    key={`${step.id}-prompt-${section.heading}-${index}`}
+                    style={[
+                      styles.narrativeSection,
+                      section.tone === 'focus' && styles.narrativeSectionFocus,
+                      section.tone === 'watch' && styles.narrativeSectionWatch,
+                      section.tone === 'action' && styles.narrativeSectionAction,
+                      section.tone === 'teach' && styles.narrativeSectionTeach,
+                    ]}
+                  >
+                    <Text style={styles.narrativeSectionHeading}>{section.heading}</Text>
+                    <Text style={styles.narrativeSectionBody}>{section.body}</Text>
+                  </View>
+                ))}
+              </View>
+            ) : null}
+
+            {(step.type === 'intro' || step.type === 'tap') && (
+              <View style={styles.reflectionCard}>
+                <Text style={styles.interactiveMeta}>Pause and choose a learning mode to continue</Text>
+                <View style={styles.reflectionChoices}>
+                  {reflectionOptions.map((option) => (
+                    <Pressable
+                      key={option.id}
+                      onPress={() => setLearningMode(option.id)}
+                      style={[
+                        styles.reflectionChoice,
+                        learningMode === option.id && styles.reflectionChoiceActive,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.reflectionChoiceText,
+                          learningMode === option.id && styles.reflectionChoiceTextActive,
+                        ]}
+                      >
+                        {option.label}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+
+                {learningMode ? (
+                  <View style={styles.reflectionResponse}>
+                    {reflectionContent.lead ? (
+                      <Text style={styles.reflectionLead}>{reflectionContent.lead}</Text>
+                    ) : null}
+                    {reflectionContent.sections.map((section, index) => (
+                      <View
+                        key={`${step.id}-reflection-${section.heading}-${index}`}
+                        style={styles.reflectionSection}
+                      >
+                        <Text style={styles.reflectionSectionHeading}>{section.heading}</Text>
+                        <Text style={styles.reflectionSectionBody}>{section.body}</Text>
+                      </View>
+                    ))}
+                  </View>
+                ) : null}
+              </View>
+            )}
 
             {step.type === 'choice' && (
               <View style={styles.choiceList}>
@@ -368,7 +540,26 @@ export default function LessonScreen() {
             {step.type === 'scenario' && (
               <View style={styles.interactiveBlock}>
                 {step.scenarioPrompt ? (
-                  <Text style={styles.scenarioPrompt}>{step.scenarioPrompt}</Text>
+                  <View style={styles.narrativeStack}>
+                    {scenarioPromptContent.lead ? (
+                      <Text style={styles.scenarioPrompt}>{scenarioPromptContent.lead}</Text>
+                    ) : null}
+                    {scenarioPromptContent.sections.map((section, index) => (
+                      <View
+                        key={`${step.id}-scenario-${section.heading}-${index}`}
+                        style={[
+                          styles.narrativeSection,
+                          section.tone === 'focus' && styles.narrativeSectionFocus,
+                          section.tone === 'watch' && styles.narrativeSectionWatch,
+                          section.tone === 'action' && styles.narrativeSectionAction,
+                          section.tone === 'teach' && styles.narrativeSectionTeach,
+                        ]}
+                      >
+                        <Text style={styles.narrativeSectionHeading}>{section.heading}</Text>
+                        <Text style={styles.narrativeSectionBody}>{section.body}</Text>
+                      </View>
+                    ))}
+                  </View>
                 ) : null}
                 <View style={styles.choiceList}>
                   {step.scenarioOptions?.map((option) => {
@@ -552,6 +743,116 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     color: babbleColors.muted,
   },
+  narrativeStack: {
+    gap: 10,
+  },
+  narrativeLead: {
+    fontSize: 17,
+    lineHeight: 25,
+    color: '#3c2d27',
+    fontWeight: '600',
+    fontFamily: babbleTypography.body,
+  },
+  narrativeSection: {
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: babbleColors.outline,
+    backgroundColor: '#fffaf6',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    gap: 4,
+  },
+  narrativeSectionFocus: {
+    backgroundColor: '#fdf3df',
+    borderColor: '#f0d2a2',
+  },
+  narrativeSectionWatch: {
+    backgroundColor: '#fff0ea',
+    borderColor: '#f0c5b8',
+  },
+  narrativeSectionAction: {
+    backgroundColor: '#eaf7f7',
+    borderColor: '#b8dfe0',
+  },
+  narrativeSectionTeach: {
+    backgroundColor: '#f0f3ff',
+    borderColor: '#cad3f0',
+  },
+  narrativeSectionHeading: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
+    color: '#5f4640',
+  },
+  narrativeSectionBody: {
+    fontSize: 14,
+    lineHeight: 21,
+    color: babbleColors.text,
+  },
+  reflectionCard: {
+    borderRadius: babbleRadii.card,
+    borderWidth: 1,
+    borderColor: '#cfdae8',
+    backgroundColor: '#f5f8ff',
+    padding: 14,
+    gap: 10,
+  },
+  reflectionChoices: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  reflectionChoice: {
+    borderRadius: babbleRadii.pill,
+    borderWidth: 1,
+    borderColor: '#c6d1e5',
+    backgroundColor: '#ffffff',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  reflectionChoiceActive: {
+    borderColor: '#7f99c2',
+    backgroundColor: '#e9f0ff',
+  },
+  reflectionChoiceText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#3c4f73',
+  },
+  reflectionChoiceTextActive: {
+    color: '#2c3f63',
+  },
+  reflectionResponse: {
+    gap: 8,
+  },
+  reflectionLead: {
+    fontSize: 15,
+    lineHeight: 22,
+    color: '#2d3e5e',
+    fontWeight: '600',
+  },
+  reflectionSection: {
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#ccd7ec',
+    backgroundColor: '#ffffff',
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    gap: 3,
+  },
+  reflectionSectionHeading: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.25,
+    textTransform: 'uppercase',
+    color: '#50658c',
+  },
+  reflectionSectionBody: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: '#30405f',
+  },
   interactiveBlock: {
     gap: 10,
   },
@@ -561,8 +862,9 @@ const styles = StyleSheet.create({
     color: babbleColors.primaryText,
   },
   scenarioPrompt: {
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 15,
+    lineHeight: 22,
+    fontWeight: '600',
     color: babbleColors.text,
   },
   choiceList: {
